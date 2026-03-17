@@ -1,0 +1,43 @@
+{
+  "name": "ipad-monitor-hub",
+  "version": "1.0.0",
+  "description": "PC Monitor for iPad Mini 1",
+  "author": "Phaenwa",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.yourname.ipadmonitor",
+    "productName": "PC Monitor Hub",
+    "asar": true,
+    "win": {
+      "target": [
+        "portable"
+      ],
+      "icon": "icon.ico"
+    },
+    "files": [
+      "**/*",
+      "!.env",
+      "!server.js"
+    ],
+    "extraResources": [
+      "public/**/*"
+    ]
+  },
+  "dependencies": {
+    "auto-launch": "^5.0.6",
+    "axios": "^1.13.6",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "ip": "^2.0.1",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "electron": "^41.0.2",
+    "electron-builder": "^26.8.1"
+  }
+}

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>PC Monitor Control Panel</title>
+    <style>
+        :root {
+            --bg: #1a1b26; --panel: #24283b; --accent: #7aa2f7; 
+            --green: #9ece6a; --red: #f7768e; --text: #a9b1d6;
+        }
+        body { 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            padding: 25px; 
+            margin: 0; 
+            user-select: none; 
+            overflow: hidden;
+        }
+        .glass { 
+            background: var(--panel); 
+            border: 1px solid rgba(255,255,255,0.05); 
+            border-radius: 20px; 
+            padding: 25px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4); 
+        }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 10px currentColor; }
+        .offline { color: var(--red); background: var(--red); }
+        .online { color: var(--green); background: var(--green); }
+
+        .qr-section { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 15px; 
+            width: 170px; 
+            height: 170px; 
+            margin: 20px auto; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            transition: 0.3s; 
+            overflow: hidden;
+        }
+        .qr-section img { width: 100%; height: 100%; object-fit: contain; }
+        
+        .ip-badge { 
+            background: rgba(0,0,0,0.3); 
+            color: #e0af68; 
+            font-family: 'Consolas', monospace; 
+            padding: 10px; 
+            border-radius: 8px; 
+            font-size: 0.95rem; 
+            margin-top: 10px; 
+            border: 1px solid rgba(224, 175, 104, 0.2); 
+            word-break: break-all;
+        }
+
+        .btn { border: none; padding: 14px; border-radius: 12px; cursor: pointer; font-weight: 600; width: 100%; transition: 0.2s; font-size: 0.9rem; margin-top: 15px; }
+        .btn-start { background: var(--accent); color: var(--bg); }
+        .btn-stop { background: var(--red); color: white; }
+        .btn-tool { background: transparent; border: 1px solid #414868; color: var(--text); margin-top: 10px; }
+        .btn-tool:hover { background: #414868; }
+
+        .log-box { 
+            background: #16161e; 
+            border-radius: 12px; 
+            height: 160px; 
+            overflow-y: auto; 
+            padding: 15px; 
+            margin-top: 20px; 
+            font-family: 'Consolas', monospace; 
+            font-size: 0.8rem; 
+            border: 1px solid rgba(255,255,255,0.03); 
+        }
+        .log-item { margin-bottom: 6px; color: #565f89; border-left: 2px solid #32344a; padding-left: 10px; }
+        .log-msg { color: #73daca; }
+
+        .settings-row { display: flex; align-items: center; gap: 10px; margin-top: 15px; font-size: 0.8rem; color: #565f89; }
+    </style>
+</head>
+<body>
+    <div class="glass">
+        <div class="header">
+            <h2 style="margin:0; color:white; font-size: 1.2rem;">PC Monitor Hub</h2>
+            <div id="status-area">
+                <span id="dot" class="status-dot offline"></span>
+                <span id="stat-text">Offline</span>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <div id="qr-frame" class="qr-section" style="opacity: 0.2;">
+                <img id="qr-img" style="display:none;" src="">
+                <span id="qr-label" style="color: #666; font-size: 0.8rem;">SERVER IDLE</span>
+            </div>
+            <div id="ip-addr" class="ip-badge">Waiting for server...</div>
+            <button id="btn-toggle" class="btn btn-start" onclick="toggleServer()">START MONITOR ENGINE</button>
+        </div>
+
+        <div class="log-box" id="log-window">
+            <div class="log-item">System Ready. Press Start to begin.</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn btn-tool" onclick="ipcRenderer.send('open-hwm')">HW MONITOR</button>
+            <button class="btn btn-tool" onclick="ipcRenderer.send('minimize-to-tray')">HIDE TO TRAY</button>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        // หมายเหตุ: การดึง IP ฝั่ง Renderer อาจติดปัญหาความปลอดภัยในบางเครื่อง 
+        // แนะนำให้ดึงผ่าน ipcRenderer หรือใช้ lib ที่ประกาศไว้
+        const ip = require('ip');
+        let isRunning = false;
+
+        function toggleServer() {
+            // ส่งคำสั่งไปที่ main.js
+            ipcRenderer.send('toggle-server', !isRunning);
+        }
+
+        // ฟังสถานะที่ส่งกลับมาจาก main.js
+        ipcRenderer.on('server-status', (event, status) => {
+            isRunning = status;
+            const btn = document.getElementById('btn-toggle');
+            const dot = document.getElementById('dot');
+            const statText = document.getElementById('stat-text');
+            const qrFrame = document.getElementById('qr-frame');
+            const qrImg = document.getElementById('qr-img');
+            const qrLabel = document.getElementById('qr-label');
+            const ipBox = document.getElementById('ip-addr');
+
+            if (status) {
+                // เปลี่ยน UI เป็นสถานะออนไลน์
+                btn.innerText = "STOP MONITOR ENGINE";
+                btn.className = "btn btn-stop";
+                dot.className = "status-dot online";
+                statText.innerText = "Online";
+                qrFrame.style.opacity = "1";
+                qrLabel.style.display = "none";
+                qrImg.style.display = "block";
+                
+                // สร้าง URL และ QR Code
+                const localIp = ip.address();
+                const url = "http://" + localIp + ":3000";
+                qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" + encodeURIComponent(url);
+                ipBox.innerText = url;
+            } else {
+                // เปลี่ยน UI เป็นสถานะออฟไลน์
+                btn.innerText = "START MONITOR ENGINE";
+                btn.className = "btn btn-start";
+                dot.className = "status-dot offline";
+                statText.innerText = "Offline";
+                qrFrame.style.opacity = "0.2";
+                qrLabel.style.display = "block";
+                qrImg.style.display = "none";
+                ipBox.innerText = "Waiting for server...";
+            }
+        });
+
+        // รับ Log จาก server ใน main.js
+        ipcRenderer.on('server-log', (event, msg) => {
+            const logWindow = document.getElementById('log-window');
+            const time = new Date().toLocaleTimeString([], {hour12: false});
+            logWindow.innerHTML += '<div class="log-item">[' + time + '] <span class="log-msg">' + msg + '</span></div>';
+            // เลื่อนลงไปล่างสุดอัตโนมัติ
+            logWindow.scrollTop = logWindow.scrollHeight;
+        });
+
+        // ฟังคำสั่งอัปเดต Log อื่นๆ ที่อาจจะเกิดขึ้น
+        ipcRenderer.on('log', (event, msg) => {
+            const logWindow = document.getElementById('log-window');
+            const time = new Date().toLocaleTimeString([], {hour12: false});
+            logWindow.innerHTML += '<div class="log-item">[' + time + '] ' + msg + '</div>';
+            logWindow.scrollTop = logWindow.scrollHeight;
+        });
+    </script>
+</body>
+</html>

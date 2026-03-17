@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Desk Monitor Pro</title>
+    <style>
+        /* --- CSS Reset & Core Structure --- */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body { 
+            width: 100%; height: 100%; 
+            margin: 0; padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; 
+            -webkit-user-select: none; overflow: hidden;
+            background-color: #000000; color: #ffffff;
+            transition: background-color 0.4s ease, color 0.4s ease;
+        }
+
+        .tabular-nums { font-feature-settings: "tnum"; -webkit-font-feature-settings: "tnum"; }
+
+        .app-wrapper {
+            position: absolute; top: 0; bottom: 0; left: 0; right: 0;
+            display: flex; display: -webkit-flex; padding: 20px;
+        }
+        
+        .main-content { 
+            flex: 1; -webkit-flex: 1; display: flex; display: -webkit-flex; flex-direction: column; -webkit-flex-direction: column;
+            overflow-y: auto; overflow-x: hidden; padding-right: 15px;
+        }
+        .main-content::-webkit-scrollbar { width: 0px; }
+
+        /* --- Header --- */
+        .header-section {
+            display: flex; display: -webkit-flex; justify-content: space-between; -webkit-justify-content: space-between; align-items: flex-start; -webkit-align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .status-dot { font-size: 11px; color: #34C759; letter-spacing: 2px; font-weight: bold; }
+        .status-dot span { opacity: 1; -webkit-animation: blink 2.5s infinite ease-in-out; animation: blink 2.5s infinite ease-in-out; }
+        @-webkit-keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+        .time-container { text-align: right; }
+        .time { font-size: 72px; font-weight: 200; line-height: 0.9; letter-spacing: 1px; }
+        .sec { font-size: 24px; color: #86868B; font-weight: 300; margin-left: 5px; }
+        .date { font-size: 13px; color: #86868B; text-transform: uppercase; letter-spacing: 4px; margin-top: 8px; font-weight: bold;}
+
+        /* --- Grid & Cards (Safari 9 Safe) --- */
+        .grid-container { 
+            display: flex; display: -webkit-flex; flex-wrap: wrap; -webkit-flex-wrap: wrap; 
+            margin: -10px; 
+        }
+        .card-wrapper { 
+            width: 50%; padding: 10px; box-sizing: border-box; 
+        }
+        
+        .card { 
+            background-color: #151515; border-radius: 24px; padding: 20px; 
+            display: flex; display: -webkit-flex; flex-direction: column; -webkit-flex-direction: column; justify-content: space-between; -webkit-justify-content: space-between;
+            border: 1px solid #2C2C2E; height: 100%; min-height: 160px;
+            transition: background-color 0.4s ease, border-color 0.4s ease;
+        }
+
+        .card-header { display: flex; display: -webkit-flex; align-items: center; -webkit-align-items: center; margin-bottom: 10px; }
+        .card-header svg { width: 16px; height: 16px; color: #86868B; stroke-width: 2.5; fill: none; stroke: currentColor; margin-right: 8px;}
+        .card-title { font-size: 11px; color: #86868B; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        
+        .val-text { font-size: 48px; font-weight: 200; line-height: 1; margin: 5px 0; }
+        .val-text .unit { font-size: 18px; color: #666; font-weight: 300; }
+        .sub-text { font-size: 12px; color: #666; font-weight: bold; letter-spacing: 0.5px; display: flex; display: -webkit-flex; justify-content: space-between; -webkit-justify-content: space-between;}
+        
+        .temp-badge { background: rgba(255, 149, 0, 0.15); color: #FF9500; padding: 2px 6px; border-radius: 6px; font-size: 10px; margin-top: 5px;}
+
+        /* Progress Bar */
+        .progress-container { width: 100%; height: 6px; background: #2C2C2E; border-radius: 3px; margin: 10px 0; overflow: hidden; }
+        .progress-bar { height: 100%; transition: width 0.5s ease; border-radius: 3px; }
+
+        /* --- Circles --- */
+        .circle-wrap { position: relative; width: 100px; height: 100px; margin: auto; }
+        .circle-wrap svg { transform: rotate(-90deg) translateZ(0); -webkit-transform: rotate(-90deg) translateZ(0); width: 100px; height: 100px; }
+        .circle-bg { fill: none; stroke: #2C2C2E; stroke-width: 6; transition: stroke 0.4s ease; }
+        .circle-progress { 
+            fill: none; stroke-width: 6; stroke-linecap: round; 
+            stroke-dasharray: 282.74; stroke-dashoffset: 282.74;
+            transition: stroke-dashoffset 0.6s ease-out; 
+        }
+        .circle-text { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            display: flex; display: -webkit-flex; align-items: center; -webkit-align-items: center; justify-content: center; -webkit-justify-content: center;
+            font-size: 24px; font-weight: 200; 
+        }
+
+        /* Colors */
+        .color-mb { color: #FF375F; } .bg-mb { background-color: #FF375F; }
+        .color-cpu { color: #FFD60A; } .bg-cpu { background-color: #FFD60A; }
+        .color-gpu { color: #0A84FF; } .bg-gpu { background-color: #0A84FF; }
+        .color-ram { stroke: #BF5AF2; color: #BF5AF2; }
+        .color-hdd { stroke: #30D158; color: #30D158; }
+
+        /* --- Sidebar --- */
+        .sidebar { 
+            width: 80px; background-color: #151515; border-radius: 40px; 
+            display: flex; display: -webkit-flex; flex-direction: column; -webkit-flex-direction: column; align-items: center; -webkit-align-items: center; padding: 25px 0;
+            border: 1px solid #2C2C2E; margin-left: 20px;
+        }
+
+        .icon-btn { 
+            background: transparent; color: #86868B; border-radius: 50%; 
+            width: 50px; height: 50px; display: flex; display: -webkit-flex; align-items: center; -webkit-align-items: center; justify-content: center; -webkit-justify-content: center;
+            cursor: pointer; border: 1px solid transparent; margin-bottom: 10px;
+        }
+        .icon-btn svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; }
+        .icon-btn.active { background: #FF453A; color: #FFF; }
+        .divider { width: 30px; height: 1px; background: #3A3A3C; margin: 5px 0 15px 0; }
+
+        /* --- Customization Modal --- */
+        #settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); z-index: 10000; display: none; 
+            align-items: center; -webkit-align-items: center; justify-content: center; -webkit-justify-content: center;
+        }
+        .modal-content {
+            background: #151515; border: 1px solid #2C2C2E; border-radius: 20px; padding: 25px; width: 300px;
+            color: #FFF; font-family: sans-serif;
+        }
+        .modal-content h3 { margin-top: 0; font-size: 16px; color: #86868B; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #2C2C2E; padding-bottom: 10px;}
+        .setting-row { display: flex; display: -webkit-flex; justify-content: space-between; -webkit-justify-content: space-between; margin-bottom: 15px; font-size: 14px; align-items: center; -webkit-align-items: center;}
+        
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3A3A3C; transition: .4s; border-radius: 22px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #34C759; }
+        input:checked + .slider:before { transform: translateX(18px); -webkit-transform: translateX(18px); }
+
+        .close-btn { width: 100%; padding: 12px; background: #34C759; color: #000; border: none; border-radius: 10px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+
+        /* --- Light Theme --- */
+        body.light-mode { background-color: #F5F5F7; color: #1D1D1F; }
+        body.light-mode .card, body.light-mode .sidebar, body.light-mode .modal-content { background-color: #FFFFFF; border-color: #E5E5EA; color:#000; }
+        body.light-mode .circle-bg, body.light-mode .progress-container { background-color: #E5E5EA; stroke: #E5E5EA; }
+        body.light-mode .card-header svg, body.light-mode .card-title, body.light-mode .sec, body.light-mode .date, body.light-mode .unit, body.light-mode .icon-btn { color: #86868B; }
+        body.light-mode .circle-text, body.light-mode .modal-content h3 { color: #1D1D1F; border-color: #E5E5EA;}
+        body.light-mode .divider { background: #E5E5EA; }
+        body.light-mode .color-mb { color: #FF2D55; } body.light-mode .bg-mb { background-color: #FF2D55; }
+        body.light-mode .color-cpu { color: #FF9500; } body.light-mode .bg-cpu { background-color: #FF9500; }
+        body.light-mode .color-gpu { color: #007AFF; } body.light-mode .bg-gpu { background-color: #007AFF; }
+        body.light-mode .color-ram { stroke: #AF52DE; color: #AF52DE; } 
+        body.light-mode .color-hdd { stroke: #34C759; color: #34C759; } 
+
+        /* --- Overlay --- */
+        #start-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; z-index: 9999; display: flex; display: -webkit-flex; align-items: center; -webkit-align-items: center; justify-content: center; -webkit-justify-content: center;
+        }
+        .start-btn { 
+            padding: 20px 45px; background: #FFF; color: #000; border: none; 
+            border-radius: 40px; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+            cursor: pointer;
+        }
+
+        /* Fan Animation */
+        .fan-icon { width: 14px; height: 14px; margin-right: 4px; -webkit-animation: spin 2s linear infinite; animation: spin 2s linear infinite; color: #30D158;}
+        @-webkit-keyframes spin { 100% { -webkit-transform: rotate(360deg); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) and (orientation: portrait) {
+            .app-wrapper { flex-direction: column; -webkit-flex-direction: column; padding: 20px; }
+            .main-content { margin-right: 0; padding-right: 0; }
+            .card-wrapper { width: 100%; }
+            .sidebar { width: 100%; flex-direction: row; -webkit-flex-direction: row; justify-content: space-around; -webkit-justify-content: space-around; height: 75px; border-radius: 30px; padding: 0 10px; margin-left: 0; margin-top: 15px;}
+            .icon-btn { margin-bottom: 0; }
+            .divider { width: 1px; height: 30px; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="start-overlay"><button class="start-btn" onclick="startSystem()">TAP TO CONNECT</button></div>
+    <audio id="nosleep" loop playsinline><source src="data:audio/mp3;base64,//OExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" type="audio/mpeg"></audio>
+
+    <div id="settings-modal">
+        <div class="modal-content">
+            <h3>Display Settings</h3>
+            <div class="setting-row">
+                <span>Mainboard</span>
+                <label class="switch"><input type="checkbox" id="pref-mb" onchange="savePrefs()"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Processor (CPU)</span>
+                <label class="switch"><input type="checkbox" id="pref-cpu" onchange="savePrefs()"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Graphics (GPU)</span>
+                <label class="switch"><input type="checkbox" id="pref-gpu" onchange="savePrefs()"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Memory (RAM)</span>
+                <label class="switch"><input type="checkbox" id="pref-ram" onchange="savePrefs()"><span class="slider"></span></label>
+            </div>
+            <div class="setting-row">
+                <span>Storage (HDD/SSD)</span>
+                <label class="switch"><input type="checkbox" id="pref-hdd" onchange="savePrefs()"><span class="slider"></span></label>
+            </div>
+            <button class="close-btn" onclick="toggleSettings()">DONE</button>
+        </div>
+    </div>
+
+    <div class="app-wrapper">
+        <div class="main-content">
+            <div class="header-section">
+                <div id="status" class="status-dot"><span>●</span> SYSTEM ONLINE</div>
+                <div class="time-container">
+                    <div class="time tabular-nums"><span id="hour">00</span>:<span id="min">00</span><span class="sec tabular-nums" id="sec">00</span></div>
+                    <div class="date" id="date">--</div>
+                </div>
+            </div>
+
+            <div id="monitor-grid" class="grid-container">
+                </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="icon-btn" onclick="toggleTheme()" id="btn-theme">
+                <svg id="theme-icon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </div>
+            
+            <div class="icon-btn" onclick="toggleSettings()">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            </div>
+
+            <div class="divider"></div>
+            
+            <div id="btn-spk" class="icon-btn" onclick="handleCommand('toggle_speaker', 'btn-spk')">
+                <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            </div>
+            <div id="btn-mic" class="icon-btn" onclick="handleCommand('toggle_mic', 'btn-mic')">
+                <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+            </div>
+            <div class="icon-btn" onclick="toggleFullScreen()">
+                 <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var ws;
+        var circleLength = 282.74; 
+
+        var prefs = { mb: true, cpu: true, gpu: true, ram: true, hdd: true };
+        var savedPrefs = localStorage.getItem('monitor-cards-prefs');
+        if (savedPrefs) {
+            try { prefs = JSON.parse(savedPrefs); } catch(e){}
+        }
+
+        document.getElementById('pref-mb').checked = prefs.mb;
+        document.getElementById('pref-cpu').checked = prefs.cpu;
+        document.getElementById('pref-gpu').checked = prefs.gpu;
+        document.getElementById('pref-ram').checked = prefs.ram;
+        document.getElementById('pref-hdd').checked = prefs.hdd;
+
+        function toggleSettings() {
+            var modal = document.getElementById('settings-modal');
+            if (modal.style.display === 'none' || modal.style.display === '') {
+                modal.style.display = 'flex';
+                modal.style.display = '-webkit-flex';
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        function savePrefs() {
+            prefs.mb = document.getElementById('pref-mb').checked;
+            prefs.cpu = document.getElementById('pref-cpu').checked;
+            prefs.gpu = document.getElementById('pref-gpu').checked;
+            prefs.ram = document.getElementById('pref-ram').checked;
+            prefs.hdd = document.getElementById('pref-hdd').checked;
+            localStorage.setItem('monitor-cards-prefs', JSON.stringify(prefs));
+        }
+
+        function updateClock() {
+            var now = new Date();
+            var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+            document.getElementById('hour').textContent = (h < 10 ? '0' : '') + h;
+            document.getElementById('min').textContent = (m < 10 ? '0' : '') + m;
+            document.getElementById('sec').textContent = (s < 10 ? '0' : '') + s;
+            var days = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+            var months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+            document.getElementById('date').textContent = days[now.getDay()] + ' • ' + now.getDate() + ' ' + months[now.getMonth()];
+        }
+        setInterval(updateClock, 1000); updateClock();
+
+        function startSystem() {
+            document.getElementById('start-overlay').style.display = 'none';
+            document.getElementById('nosleep').play();
+            connectWS();
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            var isLight = document.body.classList.contains('light-mode');
+            localStorage.setItem('monitor-theme', isLight ? 'light' : 'dark');
+            var iconPath = isLight ? 
+                '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>' : 
+                '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+            document.getElementById('theme-icon').innerHTML = iconPath;
+        }
+
+        if(localStorage.getItem('monitor-theme') === 'light') { toggleTheme(); }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); } 
+                else if (document.documentElement.webkitRequestFullscreen) { document.documentElement.webkitRequestFullscreen(); }
+            } else {
+                if (document.exitFullscreen) { document.exitFullscreen(); } 
+                else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+            }
+        }
+
+        function connectWS() {
+            ws = new WebSocket('ws://' + window.location.host);
+            ws.onmessage = function(event) {
+                try {
+                    var data = JSON.parse(event.data);
+                    var grid = document.getElementById('monitor-grid');
+                    var finalHtml = '';
+
+                    // 0. Motherboard
+                    if(data.mb && prefs.mb) {
+                        var mbTemp = Math.round(data.mb.temp || 0);
+                        var vcore = data.mb.vcore || 0;
+                        var fanStr = '';
+                        if(data.mb.fans && data.mb.fans.length > 0) {
+                            for(var i=0; i<data.mb.fans.length; i++) {
+                                fanStr += '<span style="color:#30D158;"><svg class="fan-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z"/><path d="M12 12c0 2.21 1.79 4 4 4s4-1.79 4-4-1.79-4-4-4-4 1.79-4 4z"/><path d="M12 12c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/><path d="M12 12c0-2.21-1.79-4-4-4s-4 1.79-4 4 1.79 4 4 4 4-1.79 4-4z"/></svg>' + data.mb.fans[i].rpm + ' RPM</span>';
+                            }
+                        }
+
+                        finalHtml += '<div class="card-wrapper"><div class="card">';
+                        finalHtml += '<div class="card-header"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect><line x1="8" y1="12" x2="16" y2="12"></line><line x1="12" y1="8" x2="12" y2="16"></line></svg><div class="card-title">' + (data.mb.name || 'Mainboard') + '</div></div>';
+                        finalHtml += '<div class="val-text color-mb tabular-nums">' + mbTemp + '<span class="unit">°C</span></div>';
+                        finalHtml += '<div class="progress-container"><div class="progress-bar bg-mb" style="width: ' + (mbTemp > 100 ? 100 : mbTemp) + '%"></div></div>';
+                        finalHtml += '<div class="sub-text"><span>VCORE ' + vcore.toFixed(2) + 'V</span>' + fanStr + '</div>';
+                        finalHtml += '</div></div>';
+                    }
+
+                    // 1. CPU
+                    if(data.cpu && prefs.cpu) {
+                        var cpuLoad = Math.round(data.cpu.load || 0);
+                        var cpuTemp = Math.round(data.cpu.temp || 0);
+                        
+                        finalHtml += '<div class="card-wrapper"><div class="card">';
+                        finalHtml += '<div class="card-header"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect></svg><div class="card-title">' + (data.cpu.name || 'Processor') + '</div></div>';
+                        finalHtml += '<div class="val-text color-cpu tabular-nums">' + cpuLoad + '<span class="unit">%</span></div>';
+                        finalHtml += '<div class="progress-container"><div class="progress-bar bg-cpu" style="width: ' + cpuLoad + '%"></div></div>';
+                        finalHtml += '<div class="sub-text"><span>TEMP ' + cpuTemp + '°C</span></div>';
+                        finalHtml += '</div></div>';
+                    }
+
+                    // 2. GPU
+                    if(data.gpus && data.gpus.length > 0 && prefs.gpu) {
+                        for(var j=0; j<data.gpus.length; j++) {
+                            var gLoad = Math.round(data.gpus[j].load || 0);
+                            var gTemp = Math.round(data.gpus[j].temp || 0);
+                            finalHtml += '<div class="card-wrapper"><div class="card">';
+                            finalHtml += '<div class="card-header"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line></svg><div class="card-title">' + (data.gpus[j].name || 'Graphics') + '</div></div>';
+                            finalHtml += '<div class="val-text color-gpu tabular-nums">' + gTemp + '<span class="unit">°C</span></div>';
+                            finalHtml += '<div class="progress-container"><div class="progress-bar bg-gpu" style="width: ' + gLoad + '%"></div></div>';
+                            finalHtml += '<div class="sub-text"><span>LOAD ' + gLoad + '%</span></div>';
+                            finalHtml += '</div></div>';
+                        }
+                    }
+
+                    // 3. RAM 
+                    if(data.rams && data.rams.length > 0 && prefs.ram) {
+                        for(var k=0; k<data.rams.length; k++) {
+                            var rLoad = Math.round(data.rams[k].load || 0);
+                            var rTemp = Math.round(data.rams[k].temp || 0);
+                            var rOffset = circleLength - (rLoad / 100 * circleLength);
+                            var rTempBadge = rTemp > 0 ? '<div class="temp-badge">' + rTemp + '°C</div>' : '';
+
+                            finalHtml += '<div class="card-wrapper"><div class="card" style="align-items: center; text-align: center;">';
+                            finalHtml += '<div class="card-header"><div class="card-title">' + (data.rams[k].name || 'MEMORY') + '</div></div>';
+                            finalHtml += '<div class="circle-wrap"><svg><circle class="circle-bg" cx="50" cy="50" r="45"/><circle class="circle-progress color-ram" cx="50" cy="50" r="45" style="stroke-dashoffset: ' + rOffset + ';"/></svg>';
+                            finalHtml += '<div class="circle-text color-ram tabular-nums">' + rLoad + '%</div></div>';
+                            finalHtml += rTempBadge;
+                            finalHtml += '</div></div>';
+                        }
+                    }
+
+                    // 4. HDD
+                    if(data.storage && data.storage.length > 0 && prefs.hdd) {
+                        for(var m=0; m<data.storage.length; m++) {
+                            var dLoad = Math.round(data.storage[m].load || 0);
+                            var dTemp = Math.round(data.storage[m].temp || 0);
+                            var dOffset = circleLength - (dLoad / 100 * circleLength);
+                            var dTempBadge = dTemp > 0 ? '<div class="temp-badge">' + dTemp + '°C</div>' : '';
+
+                            finalHtml += '<div class="card-wrapper"><div class="card" style="align-items: center; text-align: center;">';
+                            finalHtml += '<div class="card-header"><div class="card-title">' + (data.storage[m].name || 'STORAGE') + '</div></div>';
+                            finalHtml += '<div class="circle-wrap"><svg><circle class="circle-bg" cx="50" cy="50" r="45"/><circle class="circle-progress color-hdd" cx="50" cy="50" r="45" style="stroke-dashoffset: ' + dOffset + ';"/></svg>';
+                            finalHtml += '<div class="circle-text color-hdd tabular-nums">' + dLoad + '%</div></div>';
+                            finalHtml += dTempBadge;
+                            finalHtml += '</div></div>';
+                        }
+                    }
+
+                    grid.innerHTML = finalHtml;
+                } catch(e) {}
+            };
+            ws.onclose = function() { 
+                document.getElementById('status').style.color = '#FF9500';
+                setTimeout(connectWS, 3000); 
+            };
+            ws.onopen = function() { document.getElementById('status').style.color = '#34C759'; }
+        }
+
+        function handleCommand(cmd, btnId) {
+            if(ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ command: cmd }));
+                if(btnId) {
+                    var btn = document.getElementById(btnId);
+                    btn.className = (btn.className === 'icon-btn active') ? 'icon-btn' : 'icon-btn active';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
