@@ -1,7 +1,12 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const { exec, spawn } = require('child_process');
-const AutoLaunch = require('auto-launch');
+let AutoLaunch;
+try {
+    AutoLaunch = require('auto-launch');
+} catch (e) {
+    console.log("auto-launch not installed, skipping...");
+}
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -12,10 +17,16 @@ let win;
 let tray = null;
 let serverInstance = null;
 
-const appAutoLauncher = new AutoLaunch({
+const appAutoLauncher = AutoLaunch ? new AutoLaunch({
     name: 'PC Monitor Hub',
     path: app.getPath('exe'),
-});
+}) : null;
+
+// ================= DEBUG HELPER =================
+function sendLog(msg) {
+    console.log(msg);
+    if (win) win.webContents.send('server-log', msg);
+}
 
 // ฟังก์ชันแกะข้อมูล Hardware ให้ตรงกับ Data.json ของคุณ
 function parseHardwareData(json) {
@@ -29,27 +40,26 @@ function parseHardwareData(json) {
 
     try {
         const hardwares = json.Children[0].Children;
+
         for (let hw of hardwares) {
             let id = hw.HardwareId || "";
-            
-            // 1. Motherboard (ดึงอุณหภูมิ, Vcore, และ พัดลม)
+
             if (id === "/motherboard") {
                 stats.mb.name = hw.Text;
+
                 if (hw.Children) {
                     for (let chip of hw.Children) {
                         if (chip.Children) {
-                            // อุณหภูมิบอร์ด
+
                             let temps = chip.Children.find(c => c.Text === "Temperatures");
                             if (temps && temps.Children.length > 0) stats.mb.temp = parseFloat(temps.Children[0].Value);
-                            
-                            // แรงดันไฟ Vcore
+
                             let volts = chip.Children.find(c => c.Text === "Voltages");
                             if (volts) {
                                 let vcore = volts.Children.find(c => c.Text.toLowerCase().includes("vcore"));
                                 if (vcore) stats.mb.vcore = parseFloat(vcore.Value);
                             }
-                            
-                            // ดึงพัดลมระบบ/CPU ที่ต่อเข้าบอร์ด
+
                             let fans = chip.Children.find(c => c.Text === "Fans");
                             if (fans) {
                                 fans.Children.forEach(f => {
@@ -61,159 +71,366 @@ function parseHardwareData(json) {
                     }
                 }
             }
-            
-            // 2. CPU (อัปเกรดความแม่นยำและเพิ่ม Fallback)
+
             else if (id.includes("/amdcpu") || id.includes("/intelcpu")) {
                 stats.cpu.name = hw.Text;
+
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let tot = load.Children.find(c => c.Text.includes("Total"));
                     if (tot) stats.cpu.load = parseFloat(tot.Value);
                 }
+
                 let temps = hw.Children.find(c => c.Text === "Temperatures");
                 if (temps && temps.Children && temps.Children.length > 0) {
-                    // ใช้ includes เพื่อความยืดหยุ่น เผื่อมีเว้นวรรคหรือตัวอักษรซ่อน
-                    let pkg = temps.Children.find(c => 
-                        c.Text.includes("Package") || 
-                        c.Text.includes("Average") || 
-                        c.Text.includes("Tctl") || 
+
+                    let pkg = temps.Children.find(c =>
+                        c.Text.includes("Package") ||
+                        c.Text.includes("Average") ||
+                        c.Text.includes("Tctl") ||
                         c.Text.includes("Tdie")
                     );
-                    
-                    // Fallback: ถ้าหาชื่อเซ็นเซอร์หลักไม่เจอเลย ให้ดึงตัวแรกสุดที่เจอมาใช้แทน
-                    if (!pkg) {
-                        pkg = temps.Children[0];
-                    }
-                    
+
+                    if (!pkg) pkg = temps.Children[0];
+
                     if (pkg) stats.cpu.temp = parseFloat(pkg.Value);
                 }
             }
-            
-            // 3. GPU
+
             else if (id.includes("/gpu")) {
                 let gLoad = 0, gTemp = 0;
+
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let core = load.Children.find(c => c.Text === "GPU Core");
                     if (core) gLoad = parseFloat(core.Value);
                 }
+
                 let temps = hw.Children.find(c => c.Text === "Temperatures");
                 if (temps && temps.Children && temps.Children.length > 0) {
                     let core = temps.Children.find(c => c.Text.includes("GPU Core") || c.Text.includes("Core"));
-                    if (!core) core = temps.Children[0]; // Fallback ให้ GPU ด้วย
+                    if (!core) core = temps.Children[0];
                     if (core) gTemp = parseFloat(core.Value);
                 }
+
                 stats.gpus.push({ name: hw.Text, load: gLoad, temp: gTemp });
             }
-            
-            // 4. RAM
+
             else if (id === "/ram") {
                 let rLoad = 0, rTemp = 0;
+
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let mem = load.Children.find(c => c.Text === "Memory");
                     if (mem) rLoad = parseFloat(mem.Value);
                 }
+
                 let temps = hw.Children.find(c => c.Text === "Temperatures");
                 if (temps && temps.Children && temps.Children.length > 0) {
                     rTemp = parseFloat(temps.Children[0].Value);
                 }
+
                 stats.rams.push({ name: hw.Text, load: rLoad, temp: rTemp });
             }
-            
-            // 5. Storage
-            else if (id.includes("/hdd") || id.includes("/ssd")) {
+
+            else if (
+                id.includes("/hdd") ||
+                id.includes("/ssd") ||
+                id.includes("/nvme") ||
+                id.toLowerCase().includes("disk")
+            ) {
                 let dLoad = 0, dTemp = 0;
+
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let space = load.Children.find(c => c.Text === "Used Space");
                     if (space) dLoad = parseFloat(space.Value);
                 }
+
                 let temps = hw.Children.find(c => c.Text === "Temperatures");
                 if (temps && temps.Children && temps.Children.length > 0) {
                     dTemp = parseFloat(temps.Children[0].Value);
                 }
+
                 stats.storage.push({ name: hw.Text, load: dLoad, temp: dTemp });
             }
         }
-    } catch (err) { console.error("Parse Error:", err); }
+
+    } catch (err) {
+        console.error("Parse Error:", err);
+        sendLog("❌ Parse Error: " + err.message);
+    }
+
     return stats;
 }
 
 function executeCommand(cmd) {
+    sendLog("⚡ Execute command: " + cmd);
+
     if (cmd === 'toggle_speaker') exec('powershell -c "(new-object -com wscript.shell).SendKeys([char]173)"');
     else if (cmd === 'spk_up') exec('powershell -c "(new-object -com wscript.shell).SendKeys([char]175)"');
     else if (cmd === 'spk_down') exec('powershell -c "(new-object -com wscript.shell).SendKeys([char]174)"');
-    else if (cmd === 'toggle_mic') exec('powershell -c "$m = New-Object -ComObject Shell.Application; $m.mutesysvolume(2)"'); 
+    else if (cmd === 'toggle_mic') exec('powershell -c "$m = New-Object -ComObject Shell.Application; $m.mutesysvolume(2)"');
 }
 
 function startServer() {
+    sendLog("🔥 startServer called");
+
     const expressApp = express();
     const server = http.createServer(expressApp);
     const wss = new WebSocket.Server({ server });
-    const PORT = process.env.PORT || 3000;
+
+    const PORT = 0; // ✅ auto detect port
     const LHM_API = 'http://localhost:8085/data.json';
 
     const publicPath = app.isPackaged ? path.join(process.resourcesPath, 'public') : path.join(__dirname, 'public');
     expressApp.use(express.static(publicPath));
 
     wss.on('connection', (ws) => {
+        sendLog("📱 Client connected");
+
         const timer = setInterval(async () => {
             try {
                 const res = await axios.get(LHM_API);
                 const stats = parseHardwareData(res.data);
-                if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(stats));
-            } catch (e) { }
+
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify(stats));
+                }
+
+            } catch (e) {
+                sendLog("❌ LHM fetch error: " + e.message);
+            }
         }, 1000);
+
         ws.on('message', (msg) => {
+            sendLog("📩 WS message: " + msg);
+
             try {
                 const data = JSON.parse(msg);
                 if (data.command) executeCommand(data.command);
-            } catch (e) { }
+            } catch (e) {
+                sendLog("❌ WS parse error");
+            }
         });
-        ws.on('close', () => clearInterval(timer));
+
+        ws.on('close', () => {
+            sendLog("📴 Client disconnected");
+            clearInterval(timer);
+        });
     });
 
     serverInstance = server.listen(PORT, () => {
-        if (win) win.webContents.send('server-log', `Server running on port ${PORT}`);
+        const address = serverInstance.address();
+
+        const info = {
+            ip: ip.address(),
+            port: address.port
+        };
+
+        sendLog(`🚀 Server running on ${info.ip}:${info.port}`);
+
+        if (win) {
+            win.webContents.send('server-info', info);
+            win.webContents.send('server-status', true);
+        }
+    });
+
+    server.on('error', (err) => {
+        sendLog("❌ Server error: " + err.message);
+        if (win) win.webContents.send('server-status', false);
     });
 }
 
-function stopServer() { if (serverInstance) serverInstance.close(); }
+function stopServer() {
+    sendLog("🛑 stopServer called");
 
-function createWindow() {
-    win = new BrowserWindow({
-        width: 550, height: 800, title: "PC Monitor Hub",
-        resizable: false, autoHideMenuBar: true, backgroundColor: '#1a1b26',
-        webPreferences: { nodeIntegration: true, contextIsolation: false }
-    });
-    win.loadFile('index.html');
+    if (serverInstance) {
+        serverInstance.close();
+        serverInstance = null;
+
+        if (win) win.webContents.send('server-status', false);
+    }
 }
 
 function createTray() {
-    const iconPath = path.join(__dirname, 'icon.ico'); 
+    const iconPath = path.join(__dirname, 'icon.ico');
     let icon = nativeImage.createFromPath(iconPath);
-    if (icon.isEmpty()) icon = nativeImage.createEmpty(); 
+    if (icon.isEmpty()) icon = nativeImage.createEmpty();
+
     tray = new Tray(icon);
-    const contextMenu = Menu.buildFromTemplate([
-        { label: 'Show App', click: () => win.show() },
-        { label: 'Exit', click: () => { app.isQuiting = true; stopServer(); app.quit(); } }
-    ]);
-    tray.setContextMenu(contextMenu);
+
+    function buildMenu() {
+        return Menu.buildFromTemplate([
+            {
+                label: 'Start Minimized',
+                type: 'checkbox',
+                checked: settings.startMinimized,
+                click: (item) => {
+                    settings.startMinimized = item.checked;
+                    saveSettings();
+                }
+            },
+            {
+                label: 'Minimize To Tray',
+                type: 'checkbox',
+                checked: settings.minimizeToTray,
+                click: (item) => {
+                    settings.minimizeToTray = item.checked;
+                    saveSettings();
+                }
+            },
+            {
+                label: 'Minimize On Close',
+                type: 'checkbox',
+                checked: settings.closeToTray,
+                click: (item) => {
+                    settings.closeToTray = item.checked;
+                    saveSettings();
+                }
+            },
+            {
+                label: 'Run On Windows Startup',
+                type: 'checkbox',
+                checked: settings.autoStart,
+                click: async (item) => {
+                    settings.autoStart = item.checked;
+                    saveSettings();
+
+                    if (appAutoLauncher) {
+                        if (item.checked) await appAutoLauncher.enable();
+                        else await appAutoLauncher.disable();
+                    }
+                }
+            },
+            { type: 'separator' },
+            { label: 'Show App', click: () => win.show() },
+            {
+                label: 'Exit',
+                click: () => {
+                    app.isQuiting = true;
+                    stopServer();
+                    app.quit();
+                }
+            }
+        ]);
+    }
+
+    tray.setContextMenu(buildMenu());
+    tray.on('right-click', () => tray.setContextMenu(buildMenu()));
     tray.on('double-click', () => win.show());
 }
 
+const fs = require('fs');
+
+const configPath = path.join(app.getPath('userData'), 'config.json');
+
+let settings = {
+    startMinimized: false,
+    minimizeToTray: true,
+    closeToTray: true,
+    autoStart: false
+};
+
+function createWindow() {
+    win = new BrowserWindow({
+        width: 550,
+        height: 800,
+        title: "PC Monitor Hub",
+        resizable: false,
+        autoHideMenuBar: true,
+        backgroundColor: '#1a1b26',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+
+    win.loadFile('index.html');
+
+    // ✅ ย้ายมาไว้ตรงนี้
+    win.on('close', (e) => {
+        if (!app.isQuiting && settings.closeToTray) {
+            e.preventDefault();
+            win.hide();
+            sendLog("📦 Close → Tray");
+        }
+    });
+
+    win.on('minimize', (e) => {
+        if (settings.minimizeToTray) {
+            e.preventDefault();
+            win.hide();
+            sendLog("📦 Minimize → Tray");
+        }
+    });
+
+    // debug
+    win.webContents.openDevTools();
+}
+
+function loadSettings() {
+    try {
+        if (fs.existsSync(configPath)) {
+            settings = JSON.parse(fs.readFileSync(configPath));
+        }
+    } catch (e) {
+        console.log("loadSettings error");
+    }
+}
+
+function saveSettings() {
+    fs.writeFileSync(configPath, JSON.stringify(settings));
+}
+
 app.whenReady().then(() => {
+    loadSettings();
+
     createWindow();
     createTray();
+
+    if (settings.autoStart && appAutoLauncher) {
+        appAutoLauncher.enable();
+    }
+
+    if (settings.startMinimized) {
+        win.hide();
+    }
+
     startServer();
 });
 
-ipcMain.on('toggle-server', (event, start) => {
-    if (start) { if (!serverInstance) startServer(); } else stopServer();
+ipcMain.on('update-settings', (e, newSettings) => {
+    settings = { ...settings, ...newSettings };
+    saveSettings();
+
+    if (appAutoLauncher) {
+        if (settings.autoStart) appAutoLauncher.enable();
+        else appAutoLauncher.disable();
+    }
 });
-ipcMain.on('minimize-to-tray', () => win.hide());
+
+ipcMain.on('toggle-server', (event, start) => {
+    sendLog("📡 toggle-server: " + start);
+
+    if (start) {
+        if (!serverInstance) startServer();
+        else sendLog("⚠️ Server already running");
+    } else {
+        stopServer();
+    }
+});
+
+ipcMain.on('minimize-to-tray', () => {
+    sendLog("🗕 Minimize to tray");
+    win.hide();
+});
+
 ipcMain.on('open-hwm', () => {
+    sendLog("🖥 Open Hardware Monitor");
+
     require('dotenv').config();
+
     if (process.env.LHM_PATH) exec(`"${process.env.LHM_PATH}"`);
+    else sendLog("❌ LHM_PATH not set");
 });
