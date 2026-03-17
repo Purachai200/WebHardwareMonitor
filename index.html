@@ -35,12 +35,8 @@
         border-radius: 50%;
       }
 
-      .off {
-        background: red;
-      }
-      .on {
-        background: lime;
-      }
+      .off { background: red; }
+      .on { background: lime; }
 
       .qr {
         margin: 20px auto;
@@ -96,20 +92,19 @@
       <div id="ip" class="ip">Not running</div>
 
       <button id="btn" class="btn">START</button>
+
       <div style="margin-top: 10px">
-        <label><input type="checkbox" id="startMin" /> Start Minimized</label
-        ><br />
-        <label><input type="checkbox" id="minTray" /> Minimize To Tray</label
-        ><br />
-        <label><input type="checkbox" id="closeTray" /> Close To Tray</label
-        ><br />
+        <label><input type="checkbox" id="startMin" /> Start Minimized</label><br />
+        <label><input type="checkbox" id="minTray" /> Minimize To Tray</label><br />
+        <label><input type="checkbox" id="closeTray" /> Close To Tray</label><br />
         <label><input type="checkbox" id="autoStart" /> Auto Start</label>
       </div>
+
       <div id="log" class="log"></div>
     </div>
 
     <script>
-      const { ipcRenderer } = require("electron");
+      console.log("API:", window.api); // ✅ debug
 
       let running = false;
 
@@ -119,12 +114,21 @@
       const qr = document.getElementById("qr");
       const ipText = document.getElementById("ip");
       const logBox = document.getElementById("log");
+
       const startMin = document.getElementById("startMin");
       const minTray = document.getElementById("minTray");
       const closeTray = document.getElementById("closeTray");
       const autoStart = document.getElementById("autoStart");
 
-      ipcRenderer.on("settings", (_, s) => {
+      // ================= LOG =================
+      function log(msg) {
+        const t = new Date().toLocaleTimeString();
+        logBox.innerHTML += `<div>[${t}] ${msg}</div>`;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      // ================= SETTINGS =================
+      window.api.on("settings", (_, s) => {
         startMin.checked = s.startMinimized;
         minTray.checked = s.minimizeToTray;
         closeTray.checked = s.closeToTray;
@@ -133,7 +137,7 @@
 
       [startMin, minTray, closeTray, autoStart].forEach((el) => {
         el.onchange = () => {
-          ipcRenderer.send("update-settings", {
+          window.api.send("update-settings", {
             startMinimized: startMin.checked,
             minimizeToTray: minTray.checked,
             closeToTray: closeTray.checked,
@@ -141,25 +145,20 @@
           });
         };
       });
-      /* log function */
-      function log(msg) {
-        const t = new Date().toLocaleTimeString();
-        logBox.innerHTML += `<div>[${t}] ${msg}</div>`;
-        logBox.scrollTop = logBox.scrollHeight;
-      }
 
-      /* click */
+      // ================= BUTTON =================
       btn.onclick = () => {
-        log("🟡 Click start");
-        ipcRenderer.send("toggle-server", !running);
+        log("🟡 Click button → " + (!running ? "START" : "STOP"));
+
+        window.api.send("toggle-server", !running);
 
         setTimeout(() => {
           if (!running) log("⚠️ No response from main process");
         }, 2000);
       };
 
-      /* status */
-      ipcRenderer.on("server-status", (_, state) => {
+      // ================= STATUS =================
+      window.api.on("server-status", (_, state) => {
         log("📡 server-status: " + state);
 
         running = state;
@@ -177,8 +176,8 @@
         }
       });
 
-      /* server info */
-      ipcRenderer.on("server-info", (_, data) => {
+      // ================= SERVER INFO =================
+      window.api.on("server-info", (_, data) => {
         log("🌐 server-info received");
 
         const url = `http://${data.ip}:${data.port}`;
@@ -187,12 +186,12 @@
         qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
       });
 
-      /* log from main */
-      ipcRenderer.on("server-log", (_, msg) => {
+      // ================= LOG FROM MAIN =================
+      window.api.on("server-log", (_, msg) => {
         log(msg);
       });
 
-      /* catch error */
+      // ================= ERROR =================
       window.onerror = function (msg, url, line) {
         log(`❌ JS Error: ${msg} (${line})`);
       };

@@ -177,15 +177,30 @@ function startServer() {
     sendLog("🔥 startServer called");
 
     const expressApp = express();
+
+    // ================= 🔥 SERVE WEB =================
+    const publicPath = path.join(__dirname, 'public');
+
+    expressApp.use(express.static(publicPath));
+
+    // กันเคสเข้า / แล้วไม่เจอ
+    expressApp.get('/', (req, res) => {
+        res.sendFile(path.join(publicPath, 'index.html'));
+    });
+
+    // debug route
+    expressApp.get('/health', (req, res) => {
+        res.json({ status: 'ok' });
+    });
+
+    // ================= SERVER =================
     const server = http.createServer(expressApp);
     const wss = new WebSocket.Server({ server });
 
-    const PORT = 0; // ✅ auto detect port
+    const PORT = 9674;
     const LHM_API = 'http://localhost:8085/data.json';
 
-    const publicPath = app.isPackaged ? path.join(process.resourcesPath, 'public') : path.join(__dirname, 'public');
-    expressApp.use(express.static(publicPath));
-
+    // ================= WEBSOCKET =================
     wss.on('connection', (ws) => {
         sendLog("📱 Client connected");
 
@@ -201,7 +216,7 @@ function startServer() {
             } catch (e) {
                 sendLog("❌ LHM fetch error: " + e.message);
             }
-        }, 1000);
+        }, 2000);
 
         ws.on('message', (msg) => {
             sendLog("📩 WS message: " + msg);
@@ -220,15 +235,15 @@ function startServer() {
         });
     });
 
+    // ================= START =================
     serverInstance = server.listen(PORT, () => {
-        const address = serverInstance.address();
-
         const info = {
             ip: ip.address(),
-            port: address.port
+            port: PORT
         };
 
-        sendLog(`🚀 Server running on ${info.ip}:${info.port}`);
+        sendLog(`🚀 Server running on ${info.ip}:${PORT}`);
+        sendLog(`🌐 Open: http://${info.ip}:${PORT}`);
 
         if (win) {
             win.webContents.send('server-info', info);
@@ -236,8 +251,14 @@ function startServer() {
         }
     });
 
+    // ================= ERROR =================
     server.on('error', (err) => {
         sendLog("❌ Server error: " + err.message);
+
+        if (err.code === 'EADDRINUSE') {
+            sendLog("❌ Port already in use: " + PORT);
+        }
+
         if (win) win.webContents.send('server-status', false);
     });
 }
@@ -341,8 +362,10 @@ function createWindow() {
         autoHideMenuBar: true,
         backgroundColor: '#1a1b26',
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false
+            preload: path.join(__dirname, 'preload.js'),
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: true
         }
     });
 
@@ -364,9 +387,6 @@ function createWindow() {
             sendLog("📦 Minimize → Tray");
         }
     });
-
-    // debug
-    win.webContents.openDevTools();
 }
 
 function loadSettings() {
@@ -382,7 +402,7 @@ function loadSettings() {
 function saveSettings() {
     fs.writeFileSync(configPath, JSON.stringify(settings));
 }
-
+app.disableHardwareAcceleration();
 app.whenReady().then(() => {
     loadSettings();
 
@@ -397,7 +417,6 @@ app.whenReady().then(() => {
         win.hide();
     }
 
-    startServer();
 });
 
 ipcMain.on('update-settings', (e, newSettings) => {
