@@ -12,6 +12,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const axios = require('axios');
 const ip = require('ip');
+const mDNSAdvertiser = require('./mDNSAdvertiser');
+const mdns = new mDNSAdvertiser('smart-hw');
 
 let win;
 let tray = null;
@@ -245,6 +247,15 @@ function startServer() {
         sendLog(`🚀 Server running on ${info.ip}:${PORT}`);
         sendLog(`🌐 Open: http://${info.ip}:${PORT}`);
 
+        // ================= mDNS ADVERTISEMENT =================
+        try {
+            mdns.start();
+            sendLog(`📡 Local Domain: http://smart-hw.local:${PORT}`);
+            info.localDomain = `http://smart-hw.local:${PORT}`;
+        } catch (e) {
+            sendLog("❌ mDNS Error: " + e.message);
+        }
+
         if (win) {
             win.webContents.send('server-info', info);
             win.webContents.send('server-status', true);
@@ -269,7 +280,7 @@ function stopServer() {
     if (serverInstance) {
         serverInstance.close();
         serverInstance = null;
-
+        mdns.stop();
         if (win) win.webContents.send('server-status', false);
     }
 }
@@ -283,6 +294,15 @@ function createTray() {
 
     function buildMenu() {
         return Menu.buildFromTemplate([
+            {
+                label: 'Auto Start Server',
+                type: 'checkbox',
+                checked: settings.autoStartServer,
+                click: (item) => {
+                    settings.autoStartServer = item.checked;
+                    saveSettings();
+                }
+            },
             {
                 label: 'Start Minimized',
                 type: 'checkbox',
@@ -342,6 +362,12 @@ function createTray() {
     tray.on('double-click', () => win.show());
 }
 
+function syncSettingsToUI() {
+    if (win && win.webContents) {
+        win.webContents.send('settings', settings);
+    }
+}
+
 const fs = require('fs');
 
 const configPath = path.join(app.getPath('userData'), 'config.json');
@@ -350,7 +376,8 @@ let settings = {
     startMinimized: false,
     minimizeToTray: true,
     closeToTray: true,
-    autoStart: false
+    autoStart: false,
+    autoStartServer: true
 };
 
 function createWindow() {
@@ -370,6 +397,11 @@ function createWindow() {
     });
 
     win.loadFile('index.html');
+
+    // ✅ Sync settings when UI is loaded
+    win.webContents.on('did-finish-load', () => {
+        syncSettingsToUI();
+    });
 
     // ✅ ย้ายมาไว้ตรงนี้
     win.on('close', (e) => {
@@ -401,6 +433,7 @@ function loadSettings() {
 
 function saveSettings() {
     fs.writeFileSync(configPath, JSON.stringify(settings));
+    syncSettingsToUI(); // Sync to renderer every time settings are saved
 }
 app.disableHardwareAcceleration();
 app.whenReady().then(() => {
@@ -417,6 +450,10 @@ app.whenReady().then(() => {
         win.hide();
     }
 
+    // ✅ Auto start server on launch
+    if (settings.autoStartServer) {
+        if (!serverInstance) startServer();
+    }
 });
 
 ipcMain.on('update-settings', (e, newSettings) => {

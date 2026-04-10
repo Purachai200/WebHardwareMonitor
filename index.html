@@ -97,7 +97,8 @@
         <label><input type="checkbox" id="startMin" /> Start Minimized</label><br />
         <label><input type="checkbox" id="minTray" /> Minimize To Tray</label><br />
         <label><input type="checkbox" id="closeTray" /> Close To Tray</label><br />
-        <label><input type="checkbox" id="autoStart" /> Auto Start</label>
+        <label><input type="checkbox" id="autoStart" /> Auto Start (Windows)</label><br />
+        <label><input type="checkbox" id="autoStartServer" /> Auto Start Server</label>
       </div>
 
       <div id="log" class="log"></div>
@@ -119,6 +120,7 @@
       const minTray = document.getElementById("minTray");
       const closeTray = document.getElementById("closeTray");
       const autoStart = document.getElementById("autoStart");
+      const autoStartServer = document.getElementById("autoStartServer");
 
       // ================= LOG =================
       function log(msg) {
@@ -133,15 +135,17 @@
         minTray.checked = s.minimizeToTray;
         closeTray.checked = s.closeToTray;
         autoStart.checked = s.autoStart;
+        autoStartServer.checked = s.autoStartServer;
       });
 
-      [startMin, minTray, closeTray, autoStart].forEach((el) => {
+      [startMin, minTray, closeTray, autoStart, autoStartServer].forEach((el) => {
         el.onchange = () => {
           window.api.send("update-settings", {
             startMinimized: startMin.checked,
             minimizeToTray: minTray.checked,
             closeToTray: closeTray.checked,
             autoStart: autoStart.checked,
+            autoStartServer: autoStartServer.checked,
           });
         };
       });
@@ -176,14 +180,19 @@
         }
       });
 
-      // ================= SERVER INFO =================
       window.api.on("server-info", (_, data) => {
         log("🌐 server-info received");
 
         const url = `http://${data.ip}:${data.port}`;
-        ipText.innerText = url;
+        const localUrl = data.localDomain || "";
+        
+        if (localUrl) {
+          ipText.innerHTML = `<div>${url}</div><div style="font-size: 0.8em; color: #a5f3fc; margin-top: 4px;">${localUrl}</div>`;
+        } else {
+          ipText.innerText = url;
+        }
 
-        qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+        qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(localUrl || url)}`;
       });
 
       // ================= LOG FROM MAIN =================
