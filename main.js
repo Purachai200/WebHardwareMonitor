@@ -14,6 +14,8 @@ const axios = require('axios');
 const ip = require('ip');
 const mDNSAdvertiser = require('./mDNSAdvertiser');
 const mdns = new mDNSAdvertiser('smart-hw');
+const StatsManager = require('./StatsManager');
+const statsManager = new StatsManager();
 
 let win;
 let tray = null;
@@ -166,6 +168,15 @@ function parseHardwareData(json) {
     return stats;
 }
 
+// ✅ ฟังก์ชันช่วยคำนวณวัตต์จากข้อมูล LHM แบบเบาๆ
+function calculateWatts(stats) {
+    let watts = stats.cpu.power || (stats.cpu.load * 0.5 + 10); // ถ้าไม่มีเซนเซอร์ Power ให้ประเมินจากโหลด
+    stats.gpus.forEach(g => {
+        watts += (g.power || (g.load * 1.0 + 10));
+    });
+    return watts + 15; // + MB/Fans
+}
+
 function executeCommand(cmd) {
     sendLog("⚡ Execute command: " + cmd);
 
@@ -207,16 +218,26 @@ function startServer() {
         sendLog("📱 Client connected");
 
         const timer = setInterval(async () => {
+            if (ws.readyState !== WebSocket.OPEN) return;
+            
             try {
-                const res = await axios.get(LHM_API);
+                const res = await axios.get(LHM_API, { timeout: 1000 });
                 const stats = parseHardwareData(res.data);
+                
+                // คำนวณวัตต์และอัปเดตสถิติ
+                const watts = calculateWatts(stats);
+                statsManager.update(watts, settings.costPerUnit || 8);
+                stats.uptime = statsManager.getSummary(settings.costPerUnit || 8);
 
                 if (ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify(stats));
                 }
 
             } catch (e) {
-                sendLog("❌ LHM fetch error: " + e.message);
+                // ถ้า LHM ปิดอยู่ ให้ส่งเฉพาะ uptime ไปพลางๆ
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ uptime: statsManager.getSummary(settings.costPerUnit || 8) }));
+                }
             }
         }, 2000);
 
@@ -226,6 +247,14 @@ function startServer() {
             try {
                 const data = JSON.parse(msg);
                 if (data.command) executeCommand(data.command);
+                if (data.command === 'clear_stats') {
+                    statsManager.clearStats();
+                    sendLog("🗑 Statistics cleared");
+                }
+                if (data.costPerUnit !== undefined) {
+                    settings.costPerUnit = data.costPerUnit;
+                    saveSettings();
+                }
             } catch (e) {
                 sendLog("❌ WS parse error");
             }
@@ -358,7 +387,7 @@ function createTray() {
     }
 
     tray.setContextMenu(buildMenu());
-    tray.on('right-click', () => tray.setContextMenu(buildMenu()));
+    tray.setToolTip('PC Monitor Hub');
     tray.on('double-click', () => win.show());
 }
 
@@ -377,7 +406,8 @@ let settings = {
     minimizeToTray: true,
     closeToTray: true,
     autoStart: false,
-    autoStartServer: true
+    autoStartServer: true,
+    costPerUnit: 8
 };
 
 function createWindow() {
