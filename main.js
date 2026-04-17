@@ -20,6 +20,8 @@ const statsManager = new StatsManager();
 let win;
 let tray = null;
 let serverInstance = null;
+let audioProbeWin = null;
+let lastAudioLevel = 0;
 
 const appAutoLauncher = AutoLaunch ? new AutoLaunch({
     name: 'PC Monitor Hub',
@@ -241,6 +243,13 @@ function startServer() {
             }
         }, 2000);
 
+        // ✅ แยกการส่งข้อมูลเสียงออกมาเป็น Real-time (ส่งทุก 100ms)
+        const audioTimer = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ acoustic: { serverLevel: lastAudioLevel } }));
+            }
+        }, 100);
+
         ws.on('message', (msg) => {
             sendLog("📩 WS message: " + msg);
 
@@ -263,6 +272,7 @@ function startServer() {
         ws.on('close', () => {
             sendLog("📴 Client disconnected");
             clearInterval(timer);
+            clearInterval(audioTimer);
         });
     });
 
@@ -410,6 +420,21 @@ let settings = {
     costPerUnit: 8
 };
 
+function createAudioProbe() {
+    audioProbeWin = new BrowserWindow({
+        show: false,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false
+        }
+    });
+    audioProbeWin.loadFile(path.join(__dirname, 'public', 'audio_probe.html'));
+}
+
+ipcMain.on('audio-level', (event, level) => {
+    lastAudioLevel = level;
+});
+
 function createWindow() {
     win = new BrowserWindow({
         width: 550,
@@ -471,6 +496,7 @@ app.whenReady().then(() => {
 
     createWindow();
     createTray();
+    createAudioProbe();
 
     if (settings.autoStart && appAutoLauncher) {
         appAutoLauncher.enable();

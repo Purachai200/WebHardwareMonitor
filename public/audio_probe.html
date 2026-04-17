@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        let audioContext;
+        let analyser;
+        let microphone;
+        let sensorActive = false;
+
+        async function initAudio() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                microphone = audioContext.createMediaStreamSource(stream);
+                microphone.connect(analyser);
+                analyser.fftSize = 256;
+                sensorActive = true;
+                update();
+            } catch (e) {
+                console.error("Audio probe failed:", e);
+                ipcRenderer.send('audio-probe-error', e.message);
+            }
+        }
+
+        function update() {
+            if (!sensorActive) return;
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(dataArray);
+
+            // Calculate peak level (0-100)
+            let max = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                if (dataArray[i] > max) max = dataArray[i];
+            }
+            
+            // Normalize byte value (0-255) to 0-100
+            const level = (max / 255) * 100;
+            ipcRenderer.send('audio-level', level);
+            
+            requestAnimationFrame(update);
+        }
+
+        // Start automatically in Electron
+        initAudio();
+    </script>
+</body>
+</html>

@@ -36,61 +36,67 @@ app.use(express.static(publicPath));
 // ฟังก์ชันแกะข้อมูลแบบใหม่ (แม่นยำ 100% และดึงชื่อรุ่นได้)
 function parseHardwareData(json) {
     let stats = {
-        cpuName: "Unknown CPU", cpuLoad: 0, cpuTemp: 0,
-        gpuName: "Unknown GPU", gpuLoad: 0, gpuTemp: 0,
-        ramLoad: 0, hddLoad: 0
+        cpu: { name: "Unknown CPU", load: 0, temp: 0 },
+        gpus: [],
+        rams: [],
+        storage: [],
+        uptime: { sessionUptimeSeconds: 0, totalPowerKwh: 0, totalCostThb: 0, history: [] } 
     };
 
     try {
         const hardwares = json.Children[0].Children;
         for (let hw of hardwares) {
-            // เช็คว่าเป็น CPU
+            // CPU
             if (hw.ImageURL.includes("cpu")) {
-                stats.cpuName = hw.Text; // ได้ชื่อรุ่น CPU
+                stats.cpu.name = hw.Text;
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let totalLoad = load.Children.find(c => c.Text === "CPU Total");
-                    if (totalLoad) stats.cpuLoad = parseFloat(totalLoad.Value);
+                    if (totalLoad) stats.cpu.load = parseFloat(totalLoad.Value);
                 }
                 let temp = hw.Children.find(c => c.Text === "Temperatures");
                 if (temp) {
-                    // รองรับทั้ง Intel และ AMD
                     let pkgTemp = temp.Children.find(c => c.Text === "CPU Package" || c.Text === "Core Average" || c.Text === "Core (Tctl/Tdie)");
-                    if (pkgTemp) stats.cpuTemp = parseFloat(pkgTemp.Value);
+                    if (pkgTemp) stats.cpu.temp = parseFloat(pkgTemp.Value);
                 }
             }
 
-            // เช็คว่าเป็น GPU (Nvidia / AMD)
+            // GPU
             else if (hw.ImageURL.includes("nvidia") || hw.ImageURL.includes("ati") || hw.ImageURL.includes("amd")) {
-                stats.gpuName = hw.Text; // ได้ชื่อรุ่น GPU
+                let g = { name: hw.Text, load: 0, temp: 0 };
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let coreLoad = load.Children.find(c => c.Text === "GPU Core");
-                    if (coreLoad) stats.gpuLoad = parseFloat(coreLoad.Value);
+                    if (coreLoad) g.load = parseFloat(coreLoad.Value);
                 }
                 let temp = hw.Children.find(c => c.Text === "Temperatures");
                 if (temp) {
                     let coreTemp = temp.Children.find(c => c.Text === "GPU Core");
-                    if (coreTemp) stats.gpuTemp = parseFloat(coreTemp.Value);
+                    if (coreTemp) g.temp = parseFloat(coreTemp.Value);
                 }
+                stats.gpus.push(g);
             }
 
-            // เช็คว่าเป็น RAM
+            // RAM
             else if (hw.ImageURL.includes("ram")) {
+                let r = { name: hw.Text, load: 0 };
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let memLoad = load.Children.find(c => c.Text === "Memory");
-                    if (memLoad) stats.ramLoad = parseFloat(memLoad.Value);
+                    if (memLoad) r.load = parseFloat(memLoad.Value);
                 }
+                stats.rams.push(r);
             }
 
-            // เช็คว่าเป็น HDD/SSD
+            // STORAGE (HDD/SSD)
             else if (hw.ImageURL.includes("hdd")) {
+                let s = { name: hw.Text, load: 0 };
                 let load = hw.Children.find(c => c.Text === "Load");
                 if (load) {
                     let space = load.Children.find(c => c.Text === "Used Space");
-                    if (space) stats.hddLoad = parseFloat(space.Value);
+                    if (space) s.load = parseFloat(space.Value);
                 }
+                stats.storage.push(s);
             }
         }
     } catch (err) { }
@@ -149,6 +155,15 @@ wss.on('connection', function (ws) {
 
     ws.on('close', function () { clearInterval(timer); });
 
+});
+
+server.on('error', (e) => {
+    if (e.code === 'EADDRINUSE') {
+        console.log('\n\x1b[41m\x1b[37m[ MISSION FAILED ]\x1b[0m');
+        console.log(`   Port ${PORT} is already occupied by another system monitor.`);
+        console.log('   Please close the other instance before launching this one.\n');
+        process.exit(1);
+    }
 });
 
 server.listen(PORT, drawPCGui);

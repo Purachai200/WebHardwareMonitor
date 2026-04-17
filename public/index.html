@@ -9,478 +9,430 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.min.js"></script>
     <style>
         /* =======================================================
-           RESET
-        ======================================================= */
-        * { -webkit-box-sizing: border-box; box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+           SPACEX MISSION CONTROL — HYBRID PREMIUM
+           ======================================================= */
+        
+        @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@200;400;700&display=swap');
+
+        * { 
+            -webkit-box-sizing: border-box; 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            margin: 0; 
+            padding: 0; 
+        }
 
         html, body {
-            width: 100%; height: 100%; overflow: hidden;
-            font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
-            -webkit-user-select: none; background: #0a0a0c; color: #f2f2f7;
+            width: 100%; height: 100%;
+            background: #000;
+            color: #f0f0fa;
+            font-family: 'Barlow', -apple-system, sans-serif;
+            text-transform: uppercase;
+            scroll-snap-type: y mandatory;
+            overflow-y: scroll;
+            overflow-x: hidden;
+            -ms-overflow-style: none; /* Hide scrollbar */
+            scrollbar-width: none;
         }
-        .tnum { font-feature-settings:"tnum"; -webkit-font-feature-settings:"tnum"; }
+        body::-webkit-scrollbar { display: none; }
 
-        /* =======================================================
-           DARK MODE BASE (default)
-        ======================================================= */
-        .app {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            padding: 18px; overflow: hidden;
+        /* --- Floating Sidebar --- */
+        .sidebar {
+            position: fixed;
+            top: 50%;
+            left: 20px;
+            transform: translateY(-50%);
+            width: 64px;
+            background: rgba(20, 20, 25, 0.4);
+            border: 1px solid rgba(240, 240, 250, 0.1);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 0;
+            z-index: 1000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
-        .content {
-            -webkit-box-flex: 1; -webkit-flex: 1; flex: 1;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-            overflow: hidden; min-width: 0; margin-right: 18px;
+
+        .side-btn {
+            width: 44px; height: 44px;
+            margin-bottom: 20px;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; border-radius: 50%;
+            color: rgba(240, 240, 250, 0.4);
+            transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
         }
-        .header-bar {
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between;
-            -webkit-box-align: start; -webkit-align-items: flex-start; align-items: flex-start;
-            margin-bottom: 14px;
-            -webkit-flex-shrink: 0; flex-shrink: 0;
-            overflow: visible;
+        .side-btn.active {
+            color: #f0f0fa;
+            background: rgba(240, 240, 250, 0.1);
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(240, 240, 250, 0.2);
         }
+        .side-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+        .side-btn.cmd { color: #ffd60a; margin-top: auto; margin-bottom: 12px; }
+        .side-btn.cmd.active { color: #30d158; background: rgba(48, 209, 88, 0.1); }
+
+        .sb-sep { width: 30px; height: 1px; background: rgba(240, 240, 250, 0.1); margin: 5px 0 15px 0; }
+
+        /* --- Full-Screen Sections --- */
+        section {
+            width: 100vw; height: 100vh;
+            position: relative;
+            scroll-snap-align: start;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding-left: 100px; /* Space for sidebar */
+        }
+
+        .bg-img {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover; background-position: center;
+            filter: brightness(0.3) contrast(1.1);
+            z-index: 1;
+        }
+
+        .overlay-gradient {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: 2;
+        }
+
+        .section-content {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1100px;
+            padding: 40px;
+            animation: fadeInSec 1s ease-out;
+        }
+
+        /* --- Dashboard Summary View --- */
+        #summary-sec { background: #000; padding-left: 120px; text-align: left; }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 60px;
+            width: 100%;
+        }
+
+        /* --- Typography & Elements --- */
+        .body-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: rgba(240, 240, 250, 0.4); margin-bottom: 8px; }
+        .hero-val { font-size: 120px; font-weight: 200; letter-spacing: -6px; line-height: 0.9; margin: 10px 0; }
+        .hero-unit { font-size: 32px; font-weight: 400; letter-spacing: 0; margin-left: 10px; opacity: 0.5; }
+        .display-hero { font-size: 44px; font-weight: 700; letter-spacing: 1px; margin-bottom: 20px; }
+
+        .metric-row { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; cursor: pointer; transition: 0.3s; }
+        .metric-row:hover { transform: translateX(10px); color: #fff; }
+
+        .m-name { font-size: 14px; font-weight: 700; opacity: 0.6; flex: 1; border-bottom: 1px solid rgba(240,240,250,0.1); padding-bottom: 5px; }
+        .m-val { font-size: 24px; font-weight: 400; font-variant-numeric: tabular-nums; }
+
+        /* Bars */
+        .bar-container { width: 100%; height: 3px; background: rgba(240,240,250,0.1); position: relative; overflow: hidden; margin-top: 10px; }
+        .bar-fill { position: absolute; left: 0; top: 0; height: 100%; background: #f0f0fa; transition: width 1s ease-out; }
 
         /* Clock */
-        .clock-wrap { text-align: right; overflow: visible; }
-        .clock { font-size: 70px; font-weight: 200; line-height: 1; letter-spacing: -3px; color: #f2f2f7; overflow: visible; }
-        .clock-sep { color: #636366; }
-        .clock-sec { font-size: 22px; font-weight: 300; color: #636366; margin-left: 3px; }
-        .clock-date { font-size: 11px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: #636366; margin-top: 4px; }
+        .mission-time { font-size: 64px; font-weight: 200; letter-spacing: -3px; color: #fff; }
 
-        /* Status */
-        .sys-status { font-size: 10px; font-weight: 700; letter-spacing: 2px; color: #30D158; text-transform: uppercase; }
-        .dot { display: inline-block; -webkit-animation: blink 2s infinite; animation: blink 2s infinite; }
-        @-webkit-keyframes blink { 0%,100%{opacity:.35} 50%{opacity:1} }
-        @keyframes blink { 0%,100%{opacity:.35} 50%{opacity:1} }
+        /* --- Start Overlay --- */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 10000;
+            display: -webkit-box; display: -ms-flexbox; display: flex;
+            -webkit-box-orient: vertical; -webkit-box-direction: normal; -ms-flex-direction: column; flex-direction: column;
+            -webkit-box-pack: center; -ms-flex-pack: center; justify-content: center;
+            -webkit-box-align: center; -ms-flex-align: center; align-items: center;
+        }
 
-        /* =======================================================
-           GRID — uses negative margins for gap (iOS 9 safe, no 'gap')
-        ======================================================= */
-        .grid {
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-flex-wrap: wrap; flex-wrap: wrap;
-            margin: -5px;
-            -webkit-box-flex: 1; -webkit-flex: 1; flex: 1;
-            -webkit-align-content: stretch; align-content: stretch;
+        .btn-ghost {
+            display: inline-block; padding: 18px 36px; border-radius: 4px;
+            border: 1px solid rgba(240, 240, 250, 0.4); background: rgba(0,0,0,0);
+            color: #f0f0fa; font-size: 14px; font-weight: 700; letter-spacing: 4px;
+            cursor: pointer; transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(240, 240, 250, 0.05);
+        }
+        .btn-ghost:hover { background: #f0f0fa; color: #000; box-shadow: 0 0 30px rgba(240, 240, 250, 0.2); }
+
+        /* --- Elements --- */
+        .history-table { width: 100%; margin-top: 20px; }
+        .h-row { display: flex; padding: 10px 0; border-bottom: 1px solid rgba(240, 240, 250, 0.05); font-size: 13px; transform: skewX(-5deg); }
+        .h-row.head { color: rgba(240, 240, 250, 0.4); border-bottom: 1px solid rgba(240, 240, 250, 0.2); }
+
+        .stat-block { border-left: 2px solid rgba(240,240,250,0.1); padding-left: 20px; margin-bottom: 30px; }
+        .stat-val-lrg { font-size: 32px; font-weight: 200; color: #30d158; }
+
+        /* --- iPad Mini Scale --- */
+        @media screen and (max-height: 800px) {
+            section { padding-left: 90px; }
+            .section-content { padding: 30px; max-width: 95%; }
+            .hero-val { font-size: 90px; }
+            .display-hero { font-size: 36px; margin-bottom: 30px; }
+            .summary-grid { gap: 40px; }
+            
+            .metric-row { 
+                background: rgba(240, 240, 250, 0.03); 
+                padding: 15px 20px; 
+                border-left: 2px solid rgba(240, 240, 250, 0.1);
+                margin-bottom: 12px;
+                border-radius: 2px;
+            }
+            .m-name { border-bottom: none; font-size: 11px; color: rgba(240, 240, 250, 0.4); }
+            .m-val { font-size: 22px; }
+        }
+
+        /* --- Acoustic Meter (Sidebar Left) --- */
+        .sidebar-meter {
+            position: absolute;
+            left: 0; top: 20%; height: 60%;
+            width: 4px;
+            background: rgba(240, 240, 250, 0.05);
+            border-radius: 0 2px 2px 0;
+            display: flex; flex-direction: column-reverse;
             overflow: hidden;
         }
-        .card-wrap {
-            width: 50%; padding: 5px;
-            display: -webkit-box; display: -webkit-flex; display: flex;
+        .mtr-fill {
+            width: 100%; height: 0%;
+            background: #30d158;
+            transition: height 0.1s ease-out, background 0.3s;
+            box-shadow: 0 0 10px rgba(48, 209, 88, 0.5);
         }
 
-        /* =======================================================
-           CARD — Dark
-        ======================================================= */
-        .card {
-            width: 100%; border-radius: 18px;
-            padding: 16px 16px 12px;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-            background: #1c1c1e;
-            border: 1px solid rgba(255,255,255,0.07);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.45);
-            overflow: hidden; min-height: 0;
-        }
-        .c-label {
-            font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-            text-transform: uppercase; color: #636366;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            -webkit-flex-shrink: 0; flex-shrink: 0;
-        }
-        .val-row {
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-align: baseline; -webkit-align-items: baseline; align-items: baseline;
-            margin: 6px 0 4px;
-            -webkit-flex-shrink: 0; flex-shrink: 0;
-        }
-        .val-big { font-size: 46px; font-weight: 200; letter-spacing: -2px; line-height: 1; }
-        .val-unit { font-size: 16px; font-weight: 300; color: #636366; margin-left: 3px; }
-        .val-sub {
-            font-size: 11px; font-weight: 600; color: #636366;
-            letter-spacing: 0.5px; -webkit-flex-shrink: 0; flex-shrink: 0;
-        }
-        .bar-track {
-            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06);
-            overflow: hidden; margin: 8px 0 4px; -webkit-flex-shrink: 0; flex-shrink: 0;
-        }
-        .bar-fill { height: 100%; border-radius: 2px; width: 0%; -webkit-transition: width 1s; transition: width 1s; }
-
-        /* Circular card */
-        .card.ring-card {
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
-        }
-        .ring-wrap { position: relative; -webkit-flex-shrink: 0; flex-shrink: 0; }
-        .ring-wrap svg { display: block; -webkit-transform: rotate(-90deg); transform: rotate(-90deg); }
-        .ring-bg  { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 8; }
-        .ring-arc { fill: none; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 251.2; stroke-dashoffset: 251.2; -webkit-transition: stroke-dashoffset 1s; transition: stroke-dashoffset 1s; }
-        .ring-center {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
-            font-size: 20px; font-weight: 200;
-        }
-        .ring-sub { font-size: 10px; font-weight: 600; color: #636366; margin-top: 4px; }
-
-        /* =======================================================
-           COLORS
-        ======================================================= */
-        .c-mb  { color: #5E5CE6; } .f-mb  { background: #5E5CE6; } .s-mb  { stroke: #5E5CE6; }
-        .c-cpu { color: #0A84FF; } .f-cpu { background: #0A84FF; } .s-cpu { stroke: #0A84FF; }
-        .c-gpu { color: #BF5AF2; } .f-gpu { background: #BF5AF2; } .s-gpu { stroke: #BF5AF2; }
-        .c-ram { color: #FF9F0A; } .f-ram { background: #FF9F0A; } .s-ram { stroke: #FF9F0A; }
-        .c-hdd { color: #30D158; } .f-hdd { background: #30D158; } .s-hdd { stroke: #30D158; }
-
-        /* =======================================================
-           SIDEBAR — Dark
-        ======================================================= */
-        .sidebar {
-            width: 68px; -webkit-flex-shrink: 0; flex-shrink: 0;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            padding: 14px 0;
-            background: rgba(28,28,32,0.8); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 34px; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-        }
-        .icon-btn {
-            width: 44px; height: 44px; border-radius: 22px;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
-            cursor: pointer; margin: 4px 0;
-        }
-        .icon-btn:active { opacity: 0.6; }
-        .icon-btn svg { width: 20px; height: 20px; stroke: #636366; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
-        .icon-btn.active { background: #FF3B30; box-shadow: 0 4px 15px rgba(255,59,48,0.4); }
-        .icon-btn.active svg { stroke: #fff; }
-        .sb-sep { width: 28px; height: 1px; background: rgba(255,255,255,0.08); margin: 4px 0; }
-        .sb-spacer { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; }
-
-        /* =======================================================
-           TABS
-        ======================================================= */
-        .tab-panel { display: none; -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; overflow: hidden; }
-        .tab-panel.active {
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-        }
-
-        /* =======================================================
-           STATS TAB — Dark
-        ======================================================= */
-        .stats-shell {
-            -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; overflow: hidden;
-            background: rgba(28,28,32,0.8); border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 22px; padding: 18px;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-        }
-        .chart-box { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; min-height: 100px; border-radius: 12px; padding: 10px; background: rgba(255,255,255,0.03); margin: 10px 0; }
-        .stat-row { display: -webkit-box; display: -webkit-flex; display: flex; margin: -5px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-        .stat-chip { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; margin: 5px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
-        .stat-chip .sv { font-size: 18px; font-weight: 200; color: #f2f2f7; }
-        .stat-chip .sl { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #636366; margin-top: 2px; }
-
-        .price-strip {
-            -webkit-flex-shrink: 0; flex-shrink: 0;
-            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
-            padding: 10px 14px; margin-top: 8px;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-        }
-        .price-lbl { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #636366; margin-right: 10px; -webkit-flex-shrink: 0; flex-shrink: 0; }
-        .price-strip input { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; accent-color: #30D158; }
-        .price-val { font-size: 18px; font-weight: 200; color: #30D158; min-width: 48px; text-align: right; }
-
-        .history-box {
-            -webkit-flex-shrink: 0; flex-shrink: 0; margin-top: 8px;
-            overflow-y: auto; background: rgba(255,255,255,0.03);
-            border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
-            padding: 8px 12px; max-height: 110px;
-        }
-        .h-row { display: -webkit-box; display: -webkit-flex; display: flex; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 11px; }
-        .h-row:last-child { border-bottom: none; }
-        .h-row.head { font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #636366; }
-        .h-mo { -webkit-box-flex: 1.5; -webkit-flex: 1.5; flex: 1.5; }
-        .h-kw { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; }
-        .h-cs { -webkit-box-flex: 1; -webkit-flex: 1; flex: 1; text-align: right; color: #FFD60A; font-weight: 600; }
-
-        /* =======================================================
-           SETTINGS MODAL
-        ======================================================= */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 500;
-            background: rgba(0,0,0,0.7);
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
-        }
-        .modal-overlay.hidden { display: none; }
-        .modal-panel { background: #1c1c1e; border: 1px solid rgba(255,255,255,0.1); border-radius: 26px; padding: 26px; width: 310px; }
-        .modal-title { font-size: 18px; font-weight: 300; color: #f2f2f7; margin-bottom: 20px; }
-
-        .tog-row {
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-pack: justify; -webkit-justify-content: space-between; justify-content: space-between;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.07);
-        }
-        .tog-row:last-of-type { border-bottom: none; }
-        .tog-row span { font-size: 14px; color: #f2f2f7; }
-
-        .tog { position: relative; width: 50px; height: 28px; display: inline-block; }
-        .tog input { opacity: 0; width: 0; height: 0; }
-        .tog-track {
-            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background: #3a3a3c; border-radius: 28px;
-            -webkit-transition: background 0.25s; transition: background 0.25s; cursor: pointer;
-        }
-        .tog-track:before {
-            content:''; position: absolute; width: 22px; height: 22px;
-            left: 3px; bottom: 3px; background: #fff; border-radius: 50%;
-            -webkit-transition: -webkit-transform 0.25s; transition: transform 0.25s;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        .tog input:checked + .tog-track { background: #30D158; }
-        .tog input:checked + .tog-track:before { -webkit-transform: translateX(22px); transform: translateX(22px); }
-
-        .modal-btn { width: 100%; padding: 13px; border: none; border-radius: 13px; margin-top: 8px; font-size: 13px; font-weight: 700; letter-spacing: 1px; cursor: pointer; }
-        .modal-btn.reset  { background: rgba(255,59,48,0.12); color: #FF3B30; }
-        .modal-btn.confirm { background: rgba(255,255,255,0.08); color: #f2f2f7; margin-top: 12px; }
-
-        /* =======================================================
-           START OVERLAY
-        ======================================================= */
-        #start-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100%;
-            z-index: 9999; background: #000;
-            display: -webkit-box; display: -webkit-flex; display: flex;
-            -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
-            -webkit-box-align: center; -webkit-align-items: center; align-items: center;
-            -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
-        }
-        .start-btn {
-            padding: 18px 42px; border-radius: 40px;
-            border: 1px solid rgba(255,255,255,0.25); color: #fff;
-            background: none; font-size: 16px; font-weight: 200; letter-spacing: 5px; cursor: pointer;
-        }
-
-        /* =======================================================
-           LIGHT MODE — explicit overrides (NO CSS variables)
-        ======================================================= */
-        body.light { background: #f2f2f7; color: #1c1c1e; }
-
-        /* Light: app shell */
-        body.light .card {
-            background: #ffffff;
-            border: 1px solid rgba(0,0,0,0.07);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        body.light .c-label  { color: #8e8e93; }
-        body.light .val-unit { color: #8e8e93; }
-        body.light .val-sub  { color: #8e8e93; }
-        body.light .bar-track { background: rgba(0,0,0,0.07); }
-        body.light .ring-bg   { stroke: rgba(0,0,0,0.07); }
-        body.light .ring-sub  { color: #8e8e93; }
-        body.light .clock     { color: #1c1c1e; }
-        body.light .clock-sep { color: #8e8e93; }
-        body.light .clock-sec { color: #8e8e93; }
-        body.light .clock-date { color: #8e8e93; }
-
-        /* Light: sidebar */
-        body.light .sidebar {
-            background: rgba(255,255,255,0.90);
-            border: 1px solid rgba(0,0,0,0.07);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-        body.light .icon-btn svg { stroke: #8e8e93; }
-        body.light .sb-sep { background: rgba(0,0,0,0.08); }
-
-        /* Light: stats */
-        body.light .stats-shell    { background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.07); }
-        body.light .stat-chip      { background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06); }
-        body.light .stat-chip .sv  { color: #1c1c1e; }
-        body.light .stat-chip .sl  { color: #8e8e93; }
-        body.light .chart-box      { background: rgba(0,0,0,0.03); }
-        body.light .price-strip    { background: rgba(0,0,0,0.04); border: 1px solid rgba(0,0,0,0.06); }
-        body.light .price-lbl      { color: #8e8e93; }
-        body.light .history-box    { background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.06); }
-        body.light .h-row          { border-bottom: 1px solid rgba(0,0,0,0.06); }
-        body.light .h-row.head     { color: #8e8e93; }
-        body.light .h-row          { color: #1c1c1e; }
-
-        /* Light: modal */
-        body.light .modal-panel  { background: #fff; border: 1px solid rgba(0,0,0,0.08); }
-        body.light .modal-title  { color: #1c1c1e; }
-        body.light .tog-row      { border-bottom: 1px solid rgba(0,0,0,0.07); }
-        body.light .tog-row span { color: #1c1c1e; }
-        body.light .tog-track    { background: #d1d1d6; }
-        body.light .modal-btn.confirm { background: rgba(0,0,0,0.06); color: #1c1c1e; }
-
-        /* =======================================================
-           RESPONSIVE — iPad Mini 1 (max-height: 800px)
-           Aggressive size reduction for single-page fit
-        ======================================================= */
-        @media screen and (max-height: 800px) {
-            .app { padding: 12px; }
-            .content { margin-right: 12px; }
-            .header-bar { margin-bottom: 8px; }
-            .clock { font-size: 54px; }
-            .clock-sec { font-size: 17px; }
-            .clock-date { font-size: 10px; margin-top: 2px; letter-spacing: 3px; }
-
-            .grid { margin: -4px; }
-            .card-wrap { padding: 4px; }
-            .card { padding: 11px 12px 9px; border-radius: 15px; }
-            .c-label { font-size: 9px; }
-            .val-big { font-size: 36px; }
-            .val-unit { font-size: 13px; }
-            .val-sub { font-size: 10px; }
-            .bar-track { margin: 5px 0 3px; }
-
-            .ring-wrap svg { width: 76px; height: 76px; }
-            .ring-center { font-size: 17px; }
-            .ring-sub { font-size: 9px; }
-
-            .sidebar { width: 56px; padding: 10px 0; border-radius: 28px; }
-            .icon-btn { width: 38px; height: 38px; border-radius: 19px; }
-            .icon-btn svg { width: 17px; height: 17px; }
-            .sb-sep { width: 22px; }
-
-            .stats-shell { padding: 12px; }
-            .chart-box { margin: 6px 0; }
-            .stat-chip { padding: 8px 10px; border-radius: 10px; }
-            .stat-chip .sv { font-size: 15px; }
-            .price-strip { padding: 7px 10px; margin-top: 5px; }
-            .price-val { font-size: 15px; }
-            .history-box { max-height: 80px; margin-top: 5px; padding: 6px 10px; }
-            .h-row { font-size: 10px; padding: 3px 0; }
-        }
+        /* --- Sonic Section Details --- */
+        .sonic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .db-hero { font-size: 140px; font-weight: 200; line-height: 1; margin: 20px 0; }
+        #freq-canvas { width: 100%; height: 180px; background: rgba(240, 240, 250, 0.03); border-bottom: 1px solid rgba(240, 240, 250, 0.1); }
     </style>
 </head>
 <body>
 
 <!-- Start Overlay -->
 <div id="start-overlay">
-    <button class="start-btn" onclick="startApp()">CONNECT SYSTEM</button>
+    <div style="font-size: 32px; font-weight: 700; letter-spacing: 4px; margin-bottom: 30px;">MISSION CONTROL</div>
+    <button class="btn-ghost" onclick="startApp()">INITIATE SYSTEM</button>
 </div>
+
+<!-- Floating Sidebar -->
+<aside class="sidebar">
+    <div class="sidebar-meter">
+        <div id="side-mtr-fill" class="mtr-fill"></div>
+    </div>
+    <div id="btn-sec-summary" class="side-btn active" onclick="scrollToSec('summary-sec')">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+    </div>
+    <div id="btn-sec-cpu" class="side-btn" onclick="scrollToSec('cpu-sec')">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4V4z"></path><path d="M9 9h6v6H9V9z"></path></svg>
+    </div>
+    <div id="btn-sec-gpu" class="side-btn" onclick="scrollToSec('gpu-sec')">
+        <svg viewBox="0 0 24 24"><path d="M2 9h20v6H2z"></path><path d="M12 9v6"></path><path d="M7 9v6"></path><path d="M17 9v6"></path></svg>
+    </div>
+    <div id="btn-sec-logistics" class="side-btn" onclick="scrollToSec('logistics-sec')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 12L12 7"></path><path d="M12 12L16 16"></path></svg>
+    </div>
+    <div id="btn-sec-acoustic" class="side-btn" onclick="scrollToSec('acoustic-sec')">
+        <svg viewBox="0 0 24 24"><path d="M12 3v18M8 8v8M4 11v2M16 8v8M20 11v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </div>
+    <div class="sb-sep"></div>
+    <div id="btn-spk" class="side-btn cmd" onclick="doCmd('toggle_speaker','btn-spk')">
+        <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+    </div>
+    <div id="btn-mic" class="side-btn cmd" onclick="doCmd('toggle_mic','btn-mic')">
+        <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path></svg>
+    </div>
+    <div class="side-btn" onclick="goFull()" style="margin-top:auto">
+        <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+    </div>
+</aside>
+
+<!-- Main Scrolling Views -->
+<main>
+
+    <!-- Section 1: Summary Dashboard -->
+    <section id="summary-sec">
+        <div class="bg-img" style="background-image: url('assets/hero_rocket.png'); opacity: 0.15;"></div>
+        <div class="section-content">
+            <div class="summary-grid">
+                <div>
+                    <div class="body-label">MISSION STATUS OVERVIEW</div>
+                    <div class="display-hero">DASHBOARD CORE</div>
+                    
+                    <!-- CPU Summary -->
+                    <div class="metric-row" onclick="scrollToSec('cpu-sec')">
+                        <div class="m-name" id="sum-cpu-name">CPU PERFORMANCE</div>
+                        <div class="m-details" style="display: flex; gap: 30px;">
+                            <div class="m-val tnum"><span id="sum-cpu-load">0</span><span style="font-size:12px; opacity:0.6;">% LOAD</span></div>
+                            <div class="m-val tnum"><span id="sum-cpu-temp">0</span><span style="font-size:12px; opacity:0.6;">°C</span></div>
+                        </div>
+                    </div>
+
+                    <!-- GPU Summary -->
+                    <div class="metric-row" onclick="scrollToSec('gpu-sec')">
+                        <div class="m-name" id="sum-gpu-name">GPU MISSION CTRL</div>
+                        <div class="m-details" style="display: flex; gap: 30px;">
+                            <div class="m-val tnum" style="color: #30d158;"><span id="sum-gpu-temp">0</span><span style="font-size:12px; opacity:0.6;">°C</span></div>
+                            <div class="m-val tnum"><span id="sum-gpu-load">0</span><span style="font-size:12px; opacity:0.6;">% LOAD</span></div>
+                        </div>
+                    </div>
+
+                    <!-- RAM Summary -->
+                    <div id="sum-ram-list"></div>
+
+                    <!-- HDD Summary -->
+                    <div id="sum-hdd-list"></div>
+                </div>
+
+                <div>
+                    <div class="body-label">MISSION TIME (T+)</div>
+                    <div class="mission-time tnum">
+                        <span id="ch">00</span>:<span id="cm">00</span>
+                    </div>
+                    <div id="cd" style="font-size: 11px; opacity: 0.5;">--</div>
+                    
+                    <div style="margin-top: 40px;">
+                        <div class="body-label">SYSTEM UPTIME</div>
+                        <div class="stat-val-lrg tnum" id="st-time">--</div>
+                        <div id="sys-status" style="margin-top: 5px; font-size: 11px; color: #30d158; font-weight: 700;">SYSTEM ONLINE</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 2: CPU Detailed Section -->
+    <section id="cpu-sec">
+        <div class="bg-img" style="background-image: url('cpu_mars_detail_1776415525777.png');"></div>
+        <div class="overlay-gradient"></div>
+        <div class="section-content">
+            <div class="body-label">CENTRAL PROCESSING UNIT</div>
+            <div class="display-hero" style="font-size: 24px; opacity: 0.6;" id="cpu-name">CORE PROCESSOR</div>
+            <div class="hero-val tnum"><span id="cpu-load">0</span><span class="hero-unit">%</span></div>
+            <div class="bar-container"><div id="cpu-bar" class="bar-fill"></div></div>
+            <div style="margin-top: 20px;" class="body-label">CORE TEMPERATURE: <span id="cpu-temp">0</span>°C</div>
+        </div>
+    </section>
+
+    <!-- Section 3: GPU Detailed Section -->
+    <section id="gpu-sec">
+        <div class="bg-img" style="background-image: url('gpu_earth_detail_1776415544188.png');"></div>
+        <div class="overlay-gradient" style="background: linear-gradient(45deg, rgba(0,0,0,0.9), transparent);"></div>
+        <div class="section-content" style="text-align: right;">
+            <div class="body-label">GRAPHICS PROCESSING UNIT</div>
+            <div class="display-hero" style="font-size: 24px; opacity: 0.6;" id="gpu-name">GRAPHICS ENGINE</div>
+            <div class="hero-val tnum" style="color: #30d158;"><span id="gpu-temp">0</span><span class="hero-unit">°C</span></div>
+            <div style="max-width: 400px; margin-left: auto;">
+                <div class="bar-container"><div id="gpu-bar" class="bar-fill" style="background: #30d158;"></div></div>
+            </div>
+            <div style="margin-top: 20px;" class="body-label">UNIT LOAD: <span id="gpu-load">0</span>%</div>
+        </div>
+    </section>
+
+    <!-- Section 4: Logistics Detailed Section -->
+    <section id="logistics-sec">
+        <div class="bg-img" style="background-image: url('assets/hero_rocket.png'); filter: blur(5px) opacity(0.25);"></div>
+        <div class="section-content">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <div class="body-label">MISSION LOGISTICS</div>
+                    <div class="display-hero">POWER STATISTICS</div>
+                </div>
+                <div style="text-align: right;">
+                    <div class="body-label">TOTAL EXPENDITURE</div>
+                    <div class="stat-val-lrg tnum" id="st-cost" style="font-size: 48px;">--</div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 40px; margin-top: 40px; align-items: center;">
+                <div style="flex: 1;">
+                    <div class="body-label">ENERGY CONSUMPTION (LIFETIME)</div>
+                    <div class="stat-val-lrg tnum" id="st-kwh" style="color: #fff;">--</div>
+                </div>
+                <div style="flex: 2; border-left: 1px solid rgba(240,240,250,0.1); padding-left: 40px;">
+                    <div class="body-label">UNIT PRICE: <span id="price-val">8.00</span> THB</div>
+                    <input id="price-rng" type="range" min="1" max="15" step="0.1" value="8" style="width: 100%; margin: 10px 0;">
+                </div>
+            </div>
+
+            <div class="history-table">
+                <div class="h-row head">
+                    <div style="flex: 1;">MONTHLY MISSION LOG</div>
+                    <div style="flex: 1; text-align: right;">USAGE</div>
+                    <div style="flex: 1; text-align: right;">COST</div>
+                </div>
+                <div id="hist-list">
+                    <!-- History rows injected here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section 5: Sonic Recon Section -->
+    <section id="acoustic-sec">
+        <div class="bg-img" style="background-image: url('assets/hero_rocket.png'); filter: invert(1) opacity(0.05);"></div>
+        <div class="section-content">
+            <div class="sonic-grid">
+                <div>
+                    <div class="body-label">ACOUSTIC RECONNAISSANCE</div>
+                    <div class="display-hero">ROOM NOISE LEVEL</div>
+                    <div class="db-hero tnum"><span id="acoustic-db">0.0</span><span style="font-size: 24px; opacity: 0.4; margin-left: 10px;">dB</span></div>
+                    
+                    <div style="display: flex; gap: 20px; align-items: center;">
+                        <div id="acoustic-status" style="padding: 5px 15px; border: 1px solid #30d158; color: #30d158; font-size: 12px; font-weight: 700;">NORMAL</div>
+                        <div id="mic-source-label" style="font-size: 10px; opacity: 0.3; letter-spacing: 1px;">SOURCE: SERVER PROBE</div>
+                    </div>
+
+                    <div style="margin-top: 40px; height: 120px; border-left: 1px solid rgba(240,240,250,0.1); padding-left: 20px;">
+                        <div class="body-label">60S EXPOSURE HISTORY</div>
+                        <canvas id="acoustic-history-canvas" height="80"></canvas>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; justify-content: flex-end;">
+                    <div class="body-label" style="text-align: right; margin-bottom: 10px;">SPECTRAL DENSITY</div>
+                    <canvas id="freq-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</main>
+
 <audio id="nosleep" loop playsinline>
     <source src="data:audio/mp3;base64,//OExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" type="audio/mpeg">
 </audio>
 
-<!-- Settings Modal -->
-<div id="settings-modal" class="modal-overlay hidden">
-    <div class="modal-panel">
-        <div class="modal-title">Display Preferences</div>
-        <div class="tog-row"><span>Mainboard</span><label class="tog"><input type="checkbox" id="s-mb" onchange="savePrefs()"><span class="tog-track"></span></label></div>
-        <div class="tog-row"><span>Processor</span><label class="tog"><input type="checkbox" id="s-cpu" onchange="savePrefs()"><span class="tog-track"></span></label></div>
-        <div class="tog-row"><span>Graphics Card</span><label class="tog"><input type="checkbox" id="s-gpu" onchange="savePrefs()"><span class="tog-track"></span></label></div>
-        <div class="tog-row"><span>Memory</span><label class="tog"><input type="checkbox" id="s-ram" onchange="savePrefs()"><span class="tog-track"></span></label></div>
-        <div class="tog-row"><span>Disk Drives</span><label class="tog"><input type="checkbox" id="s-hdd" onchange="savePrefs()"><span class="tog-track"></span></label></div>
-        <button class="modal-btn reset" onclick="doResetStats()">RESET ALL STATISTICS</button>
-        <button class="modal-btn confirm" onclick="closeSettings()">DONE</button>
-    </div>
-</div>
-
-<!-- App Shell -->
-<div class="app">
-    <div class="content">
-
-        <!-- Header -->
-        <div class="header-bar">
-            <div id="sys-status" class="sys-status"><span class="dot">●</span> SYSTEM ONLINE</div>
-            <div class="clock-wrap">
-                <div class="clock tnum">
-                    <span id="ch">00</span><span class="clock-sep">:</span><span id="cm">00</span><span class="clock-sec tnum" id="cs">00</span>
-                </div>
-                <div class="clock-date" id="cd">--</div>
-            </div>
-        </div>
-
-        <!-- Realtime Tab -->
-        <div id="tab-rt" class="tab-panel active">
-            <div id="grid" class="grid"></div>
-        </div>
-
-        <!-- Stats Tab -->
-        <div id="tab-st" class="tab-panel">
-            <div class="stats-shell">
-                <div class="stat-row">
-                    <div class="stat-chip"><div id="st-time" class="sv">--</div><div class="sl">Uptime</div></div>
-                    <div class="stat-chip"><div id="st-kwh"  class="sv">--</div><div class="sl">Total kWh</div></div>
-                    <div class="stat-chip"><div id="st-cost" class="sv">--</div><div class="sl">Est. Cost</div></div>
-                    <div class="stat-chip"><div id="st-today" class="sv">--</div><div class="sl">Today</div></div>
-                </div>
-                <div class="chart-box"><canvas id="pwr-chart"></canvas></div>
-                <div class="price-strip">
-                    <div class="price-lbl">THB/kWh</div>
-                    <input id="price-rng" type="range" min="1" max="15" step="0.1" value="8">
-                    <div id="price-val" class="price-val tnum">8.00</div>
-                </div>
-                <div class="history-box">
-                    <div id="hist-list"></div>
-                </div>
-            </div>
-        </div>
-
-    </div><!-- /content -->
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div id="btn-theme" class="icon-btn" onclick="toggleTheme()">
-            <svg id="theme-svg" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-        </div>
-        <div class="icon-btn" onclick="openSettings()">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9"></path></svg>
-        </div>
-        <div class="sb-sep"></div>
-        <div id="btn-rt" class="icon-btn active" onclick="goTab('rt')">
-            <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
-        </div>
-        <div id="btn-st" class="icon-btn" onclick="goTab('st')">
-            <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-        </div>
-        <div class="sb-sep"></div>
-        <div id="btn-spk" class="icon-btn" onclick="doCmd('toggle_speaker','btn-spk')">
-            <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-        </div>
-        <div class="sb-spacer"></div>
-        <div class="icon-btn" onclick="goFull()">
-            <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================================
-     JAVASCRIPT — ES5 (iOS 9 compatible, no arrow functions, no const/let)
-============================================================ -->
 <script>
     /* --- State --- */
     var ws        = null;
     var chart     = null;
-    var curTab    = 'rt';
-    var RING      = 251.2;   /* 2 * PI * 40 */
+    var sandbox   = false;
     var prefs     = { mb:true, cpu:true, gpu:true, ram:true, hdd:true };
+    var acoustic  = { level: 0, history: [], localActive: false, raw: 0 };
 
-    /* --- Load saved data --- */
-    (function() {
-        var raw = localStorage.getItem('monprefs');
-        if (raw) { try { prefs = JSON.parse(raw); } catch(e){} }
-        document.getElementById('s-mb').checked  = prefs.mb;
-        document.getElementById('s-cpu').checked = prefs.cpu;
-        document.getElementById('s-gpu').checked = prefs.gpu;
-        document.getElementById('s-ram').checked = prefs.ram;
-        document.getElementById('s-hdd').checked = prefs.hdd;
-        if (localStorage.getItem('montheme') === 'light') applyLight();
-    })();
+    /* --- Mock Data (Sandbox Mode) --- */
+    function getMockData() {
+        return {
+            cpu: { name: "INTEL CORE I9-EXTREME", load: 20 + Math.random() * 60, temp: 45 + Math.random() * 20 },
+            gpus: [{ name: "RTX 4090 MISSION CTRL", load: 10 + Math.random() * 30, temp: 55 + Math.random() * 10 }],
+            rams: [{ name: "1. VESSEL RAM 01", load: 45 + Math.random() * 10 }, { name: "2. VESSEL RAM 02", load: 52 }],
+            storage: [{ name: "SYSTEM SSD (C:)", load: 72 }, { name: "DATA DRIVE (D:)", load: 18 }],
+            uptime: {
+                sessionUptimeSeconds: 12450,
+                totalPowerKwh: "12.45",
+                totalCostThb: "99.60",
+                costPerUnit: 8.0,
+                history: [
+                    { time: "12:00", watts: 150 }, { time: "12:05", watts: 180 }, 
+                    { time: "12:10", watts: 161 }, { time: "12:15", watts: 210 }
+                ],
+                monthlyHistory: {
+                    "2024-03": { powerKwh: 450.2, cost: 3601.6 },
+                    "2024-04": { powerKwh: 12.45, cost: 99.6 }
+                }
+            }
+        };
+    }
 
     /* --- Clock --- */
     function tick() {
@@ -488,10 +440,10 @@
         var h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
         document.getElementById('ch').textContent = (h < 10 ? '0' : '') + h;
         document.getElementById('cm').textContent = (m < 10 ? '0' : '') + m;
-        document.getElementById('cs').textContent = (s < 10 ? '0' : '') + s;
         var DAYS = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
         var MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
         document.getElementById('cd').textContent = DAYS[now.getDay()] + ' \u2022 ' + now.getDate() + ' ' + MONS[now.getMonth()];
+        if (sandbox) renderData(getMockData());
     }
     setInterval(tick, 1000); tick();
 
@@ -500,100 +452,195 @@
         document.getElementById('start-overlay').style.display = 'none';
         var a = document.getElementById('nosleep');
         if (a && a.play) { try { a.play(); } catch(e){} }
+        
+        initLocalAcoustic(); // Attempt local mic
         connectWS();
+        setTimeout(function() { if (!ws || ws.readyState !== 1) enableSandbox(); }, 3000);
+        setupScrollObserver();
+    }
+
+    /* --- Hybrid Acoustic Engine --- */
+    function initLocalAcoustic() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            console.log("Mic API not supported (Legacy Browser)");
+            document.getElementById('mic-source-label').textContent = "SOURCE: PC MASTER (LEGACY MODE)";
+            return;
+        }
+
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                var analyzer = ctx.createAnalyser();
+                var source = ctx.createMediaStreamSource(stream);
+                source.connect(analyzer);
+                analyzer.fftSize = 256;
+                acoustic.localActive = true;
+                document.getElementById('mic-source-label').textContent = "SOURCE: DEVICE MICROPHONE (ACTIVE)";
+                
+                var bufferLength = analyzer.frequencyBinCount;
+                var dataArray = new Uint8Array(bufferLength);
+
+                function poll() {
+                    analyzer.getByteFrequencyData(dataArray);
+                    var max = 0;
+                    for (var i = 0; i < bufferLength; i++) if (dataArray[i] > max) max = dataArray[i];
+                    
+                    updateAcousticUI((max / 255) * 100);
+                    drawSpectral(dataArray); // High-res FFT visual
+                    requestAnimationFrame(poll);
+                }
+                poll();
+            })
+            .catch(function(err) {
+                console.log("Mic access denied, using server fallback.");
+                document.getElementById('mic-source-label').textContent = "SOURCE: PC MASTER (FALLBACK)";
+            });
+    }
+
+    function updateAcousticUI(level) {
+        acoustic.level = level;
+        
+        // Update Sidebar Meter
+        var mtr = document.getElementById('side-mtr-fill');
+        mtr.style.height = level + '%';
+        
+        // Color coding: green -> yellow -> red
+        if (level < 40) { mtr.style.background = '#30d158'; mtr.style.boxShadow = '0 0 10px rgba(48, 209, 88, 0.5)'; }
+        else if (level < 75) { mtr.style.background = '#ffd60a'; mtr.style.boxShadow = '0 0 10px rgba(255, 214, 10, 0.5)'; }
+        else { mtr.style.background = '#ff3b30'; mtr.style.boxShadow = '0 0 10px rgba(255, 59, 48, 0.5)'; }
+
+        // Update Detailed Section
+        var db = (level * 1.2).toFixed(1); // Rough dB approximation
+        document.getElementById('acoustic-db').textContent = db;
+        
+        var status = document.getElementById('acoustic-status');
+        if (level < 30) { status.textContent = 'QUIET'; status.style.color = '#30d158'; status.style.borderColor = '#30d158'; }
+        else if (level < 70) { status.textContent = 'NORMAL'; status.style.color = '#ffd60a'; status.style.borderColor = '#ffd60a'; }
+        else { status.textContent = 'CRITICAL'; status.style.color = '#ff3b30'; status.style.borderColor = '#ff3b30'; }
+
+        // History Data for Canvas
+        acoustic.history.push(level);
+        if (acoustic.history.length > 100) acoustic.history.shift();
+        drawAcousticHistory();
+    }
+
+    function drawAcousticHistory() {
+        var canvas = document.getElementById('acoustic-history-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width, h = canvas.height;
+        ctx.clearRect(0,0,w,h);
+        ctx.beginPath();
+        ctx.strokeStyle = '#30d158';
+        ctx.lineWidth = 2;
+        var step = w / 100;
+        for (var i = 0; i < acoustic.history.length; i++) {
+            var x = i * step;
+            var y = h - (acoustic.history[i] / 100 * h);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+
+    function drawSpectral(data) {
+        var canvas = document.getElementById('freq-canvas');
+        if (!canvas) return;
+        var ctx = canvas.getContext('2d');
+        var w = canvas.width, h = canvas.height;
+        ctx.clearRect(0,0,w,h);
+        var barWidth = (w / data.length) * 2.5;
+        var x = 0;
+        for (var i = 0; i < data.length; i++) {
+            var barHeight = (data[i] / 255) * h;
+            var r = 48, g = 209, b = 88; // Default green
+            if (data[i] > 180) { r = 255; g = 59; b = 48; }
+            else if (data[i] > 100) { r = 255; g = 214; b = 10; }
+            ctx.fillStyle = 'rgba(' + r + ',' + g + ',' + b + ',' + (data[i]/255 + 0.1) + ')';
+            ctx.fillRect(x, h - barHeight, barWidth - 1, barHeight);
+            x += barWidth;
+        }
     }
 
     /* --- WebSocket --- */
     function connectWS() {
-        ws = new WebSocket('ws://' + window.location.host);
-        ws.onopen    = function() { document.getElementById('sys-status').style.color = '#30D158'; };
-        ws.onclose   = function() { document.getElementById('sys-status').style.color = '#FF3B30'; setTimeout(connectWS, 3000); };
-        ws.onmessage = function(e) {
-            try { renderData(JSON.parse(e.data)); } catch(err) { console.warn(err); }
-        };
+        try {
+            ws = new WebSocket('ws://' + window.location.host);
+            ws.onopen    = function() { 
+                sandbox = false;
+                document.getElementById('sys-status').style.color = '#30d158'; 
+                document.getElementById('sys-status').textContent = 'SYSTEM ONLINE'; 
+            };
+            ws.onclose   = function() { 
+                document.getElementById('sys-status').style.color = '#ff3b30'; 
+                document.getElementById('sys-status').textContent = 'SYSTEM OFFLINE'; 
+                setTimeout(connectWS, 5000); 
+            };
+            ws.onmessage = function(e) { try { renderData(JSON.parse(e.data)); } catch(err){} };
+        } catch(e) { enableSandbox(); }
+    }
+
+    function enableSandbox() {
+        if (!sandbox) {
+            sandbox = true;
+            document.getElementById('sys-status').style.color = '#ffd60a'; 
+            document.getElementById('sys-status').textContent = 'SANDBOX MODE'; 
+        }
     }
 
     /* --- Render --- */
     function renderData(data) {
-        var grid = document.getElementById('grid');
-        var html = '';
-
-        /* Mainboard — Temp big, Voltage sub */
-        if (data.mb && prefs.mb) {
-            var t  = Math.round(data.mb.temp || 0);
-            var pct = Math.min(t, 100);
-            html += mkCard(
-                'c-mb', data.mb.name || 'MAINBOARD',
-                '<div class="val-row"><span class="val-big c-mb tnum">' + t + '</span><span class="val-unit">&deg;C</span></div>',
-                '<div class="bar-track"><div class="bar-fill f-mb" style="width:' + pct + '%"></div></div>',
-                '<div class="val-sub">VCORE &nbsp;' + Number(data.mb.vcore || 0).toFixed(2) + ' V</div>'
-            );
+        // CPU (Summary + Detail)
+        if (data.cpu) {
+            var load = Math.round(data.cpu.load || 0);
+            var temp = Math.round(data.cpu.temp || 0);
+            var name = data.cpu.name || 'PROCESSOR';
+            document.getElementById('cpu-name').textContent = name;
+            document.getElementById('sum-cpu-name').textContent = name;
+            document.getElementById('cpu-load').textContent = load;
+            document.getElementById('sum-cpu-load').textContent = load;
+            document.getElementById('sum-cpu-temp').textContent = temp;
+            document.getElementById('cpu-bar').style.width = load + '%';
+            document.getElementById('cpu-temp').textContent = temp;
         }
 
-        /* CPU — Load% big, Temp + Clock sub */
-        if (data.cpu && prefs.cpu) {
-            var load  = Math.round(data.cpu.load || 0);
-            var ct    = Math.round(data.cpu.temp  || 0);
-            html += mkCard(
-                'c-cpu', data.cpu.name || 'PROCESSOR',
-                '<div class="val-row"><span class="val-big c-cpu tnum">' + load + '</span><span class="val-unit">%</span></div>',
-                '<div class="bar-track"><div class="bar-fill f-cpu" style="width:' + load + '%"></div></div>',
-                '<div class="val-sub">TEMP &nbsp;' + ct + ' &deg;C</div>'
-            );
+        // GPU (Summary + Detail)
+        if (data.gpus && data.gpus.length > 0) {
+            var g = data.gpus[0];
+            var gt = Math.round(g.temp || 0);
+            var gl = Math.round(g.load || 0);
+            var gn = g.name || 'GRAPHICS ENGINE';
+            document.getElementById('gpu-name').textContent = gn;
+            document.getElementById('sum-gpu-name').textContent = gn;
+            document.getElementById('gpu-temp').textContent = gt;
+            document.getElementById('sum-gpu-temp').textContent = gt;
+            document.getElementById('sum-gpu-load').textContent = gl;
+            document.getElementById('gpu-bar').style.width = gl + '%';
+            document.getElementById('gpu-load').textContent = gl;
         }
 
-        /* GPU — Temp big, Load sub */
-        if (data.gpus && prefs.gpu) {
-            for (var i = 0; i < data.gpus.length; i++) {
-                var g  = data.gpus[i];
-                var gl = Math.round(g.load || 0);
-                var gt = Math.round(g.temp || 0);
-                html += mkCard(
-                    'c-gpu', g.name || 'GRAPHICS',
-                    '<div class="val-row"><span class="val-big c-gpu tnum">' + gt + '</span><span class="val-unit">&deg;C</span></div>',
-                    '<div class="bar-track"><div class="bar-fill f-gpu" style="width:' + gl + '%"></div></div>',
-                    '<div class="val-sub">LOAD &nbsp;' + gl + ' %</div>'
-                );
+        // Multi-RAM Summary
+        if (data.rams) {
+            var rList = document.getElementById('sum-ram-list');
+            var rHtml = '';
+            for (var i = 0; i < data.rams.length; i++) {
+                var r = data.rams[i];
+                rHtml += '<div class="metric-row"><div class="m-name">' + (r.name || 'RAM MODULE') + '</div>' +
+                         '<div class="m-val tnum"><span>' + Math.round(r.load || 0) + '</span><span style="font-size:12px;opacity:0.6;">%</span></div></div>';
             }
+            rList.innerHTML = rHtml;
         }
 
-        /* RAM — Ring */
-        if (data.rams && prefs.ram) {
-            for (var j = 0; j < data.rams.length; j++) {
-                var r   = data.rams[j];
-                var rl  = r.load || 0;
-                var rof = (RING - (rl / 100 * RING)).toFixed(1);
-                html += '<div class="card-wrap"><div class="card ring-card">' +
-                    '<div class="c-label">' + (r.name || 'MEMORY') + '</div>' +
-                    '<div class="ring-wrap">' +
-                    '<svg width="90" height="90" viewBox="0 0 100 100">' +
-                    '<circle class="ring-bg" cx="50" cy="50" r="40"/>' +
-                    '<circle class="ring-arc s-ram" cx="50" cy="50" r="40" style="stroke-dashoffset:' + rof + '"/></svg>' +
-                    '<div class="ring-center c-ram tnum">' + Math.round(rl) + '%</div></div>' +
-                    (r.temp > 0 ? '<div class="ring-sub">' + r.temp + ' &deg;C</div>' : '') +
-                    '</div></div>';
+        // Multi-Storage Summary
+        if (data.storage) {
+            var sList = document.getElementById('sum-hdd-list');
+            var sHtml = '';
+            for (var j = 0; j < data.storage.length; j++) {
+                var s = data.storage[j];
+                sHtml += '<div class="metric-row"><div class="m-name">' + (s.name || 'STORAGE DRIVE') + '</div>' +
+                         '<div class="m-val tnum"><span>' + Math.round(s.load || 0) + '</span><span style="font-size:12px;opacity:0.6;">%</span></div></div>';
             }
+            sList.innerHTML = sHtml;
         }
-
-        /* Storage — Ring */
-        if (data.storage && prefs.hdd) {
-            for (var k = 0; k < data.storage.length; k++) {
-                var s   = data.storage[k];
-                var sl  = s.load || 0;
-                var sof = (RING - (sl / 100 * RING)).toFixed(1);
-                html += '<div class="card-wrap"><div class="card ring-card">' +
-                    '<div class="c-label">' + (s.name || 'STORAGE') + '</div>' +
-                    '<div class="ring-wrap">' +
-                    '<svg width="90" height="90" viewBox="0 0 100 100">' +
-                    '<circle class="ring-bg" cx="50" cy="50" r="40"/>' +
-                    '<circle class="ring-arc s-hdd" cx="50" cy="50" r="40" style="stroke-dashoffset:' + sof + '"/></svg>' +
-                    '<div class="ring-center c-hdd tnum">' + Math.round(sl) + '%</div></div>' +
-                    (s.temp > 0 ? '<div class="ring-sub">' + s.temp + ' &deg;C</div>' : '') +
-                    '</div></div>';
-            }
-        }
-
-        if (grid && html) grid.innerHTML = html;
 
         /* Stats */
         if (data.uptime) {
@@ -603,110 +650,61 @@
             document.getElementById('st-time').textContent  = uh + 'h ' + um + 'm';
             document.getElementById('st-kwh').textContent   = (u.totalPowerKwh  || '0') + ' kWh';
             document.getElementById('st-cost').textContent  = '\u0e3f' + (u.totalCostThb || '0.00');
-            document.getElementById('st-today').textContent = (u.todayPowerKwh  || '0') + ' kWh';
 
-            /* sync slider */
             if (u.costPerUnit) {
                 var sl2 = document.getElementById('price-rng');
-                if (Math.abs(parseFloat(sl2.value) - u.costPerUnit) > 0.05) {
+                if (Math.abs(parseFloat(sl2.value) - u.costPerUnit) > 0.1) {
                     sl2.value = u.costPerUnit;
                     document.getElementById('price-val').textContent = parseFloat(u.costPerUnit).toFixed(2);
                 }
             }
-
-            if (u.history && u.history.length && curTab === 'st') renderChart(u.history);
             if (u.monthlyHistory) renderHistory(u.monthlyHistory);
+        }
+
+        // Acoustic Update (Fallback to server if local mic inactive)
+        if (data.acoustic && !acoustic.localActive) {
+            updateAcousticUI(data.acoustic.serverLevel || 0);
         }
     }
 
-    /* --- Card builder --- */
-    function mkCard(cc, label, valHtml, barHtml, subHtml) {
-        return '<div class="card-wrap"><div class="card">' +
-            '<div class="c-label">' + label + '</div>' +
-            valHtml + barHtml + subHtml +
-            '</div></div>';
-    }
-
-    /* --- Chart --- */
-    function renderChart(history) {
-        var labels = [], vals = [];
-        for (var i = 0; i < history.length; i++) { labels.push(history[i].time); vals.push(history[i].watts); }
-        if (chart) { chart.data.labels = labels; chart.data.datasets[0].data = vals; chart.update(0); return; }
-        var ctx = document.getElementById('pwr-chart').getContext('2d');
-        chart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: labels, datasets: [{ data: vals, borderColor: '#30D158', backgroundColor: 'rgba(48,209,88,0.1)', borderWidth: 1.5, fill: true, pointRadius: 0 }] },
-            options: {
-                responsive: true, maintainAspectRatio: false, legend: { display: false },
-                scales: {
-                    yAxes: [{ ticks: { fontColor: '#636366', fontSize: 10, beginAtZero: false }, gridLines: { color: 'rgba(99,99,102,0.12)' } }],
-                    xAxes: [{ display: false }]
-                }
-            }
-        });
-    }
-
-    /* --- History --- */
+    /* --- History Table --- */
     function renderHistory(h) {
-        var keys = Object.keys(h).sort();
-        var html = '<div class="h-row head"><div class="h-mo">MONTH</div><div class="h-kw">USAGE</div><div class="h-cs">COST</div></div>';
-        for (var i = keys.length - 1; i >= 0; i--) {
+        var keys = Object.keys(h).sort().reverse();
+        var html = '';
+        for (var i = 0; i < keys.length; i++) {
             var m = keys[i];
-            html += '<div class="h-row"><div class="h-mo" style="color:#30D158;font-weight:600">' + m + '</div>' +
-                '<div class="h-kw">' + Number(h[m].powerKwh || 0).toFixed(3) + ' kWh</div>' +
-                '<div class="h-cs">\u0e3f' + Number(h[m].cost || 0).toFixed(2) + '</div></div>';
+            html += '<div class="h-row"><div style="flex:1">' + m + '</div>' +
+                '<div style="flex:1;text-align:right">' + Number(h[m].powerKwh || 0).toFixed(2) + ' kWh</div>' +
+                '<div style="flex:1;text-align:right">\u0e3f' + Number(h[m].cost || 0).toFixed(2) + '</div></div>';
         }
         document.getElementById('hist-list').innerHTML = html;
     }
 
-    /* --- Price slider --- */
-    document.getElementById('price-rng').oninput = function() {
-        var v = parseFloat(this.value).toFixed(2);
-        document.getElementById('price-val').textContent = v;
-        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ costPerUnit: parseFloat(v) }));
-    };
-
-    /* --- Tabs --- */
-    function goTab(id) {
-        curTab = id;
-        var panels = document.querySelectorAll('.tab-panel');
-        for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
-        var btns = document.querySelectorAll('.sidebar .icon-btn');
-        for (var j = 0; j < btns.length; j++) btns[j].classList.remove('active');
-        document.getElementById('tab-' + id).classList.add('active');
-        document.getElementById('btn-' + id).classList.add('active');
+    /* --- Scroll & Nav --- */
+    function scrollToSec(id) {
+        document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        // Immediate visual update
+        var btns = document.querySelectorAll('.side-btn');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+        var targetBtn = document.getElementById('btn-sec-' + id.split('-')[0]);
+        if (targetBtn) targetBtn.classList.add('active');
     }
 
-    /* --- Theme --- */
-    function applyLight() {
-        document.body.classList.add('light');
-        document.getElementById('theme-svg').innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-    }
-    function applyDark() {
-        document.body.classList.remove('light');
-        document.getElementById('theme-svg').innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-    }
-    function toggleTheme() {
-        if (document.body.classList.contains('light')) { applyDark(); localStorage.setItem('montheme', 'dark'); }
-        else { applyLight(); localStorage.setItem('montheme', 'light'); }
-    }
+    function setupScrollObserver() {
+        var options = { threshold: 0.4, rootMargin: "-10% 0px -10% 0px" };
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(entry) {
+                if (entry.isIntersecting) {
+                    var id = entry.target.id;
+                    var btns = document.querySelectorAll('.side-btn');
+                    for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+                    var targetBtn = document.getElementById('btn-sec-' + id.split('-')[0]);
+                    if (targetBtn) targetBtn.classList.add('active');
+                }
+            });
+        }, options);
 
-    /* --- Settings --- */
-    function openSettings()  { document.getElementById('settings-modal').classList.remove('hidden'); }
-    function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
-    function savePrefs() {
-        prefs.mb  = document.getElementById('s-mb').checked;
-        prefs.cpu = document.getElementById('s-cpu').checked;
-        prefs.gpu = document.getElementById('s-gpu').checked;
-        prefs.ram = document.getElementById('s-ram').checked;
-        prefs.hdd = document.getElementById('s-hdd').checked;
-        localStorage.setItem('monprefs', JSON.stringify(prefs));
-    }
-    function doResetStats() {
-        if (confirm('Reset all power statistics? This cannot be undone.')) {
-            if (ws && ws.readyState === 1) ws.send(JSON.stringify({ command: 'clear_stats' }));
-            closeSettings();
-        }
+        document.querySelectorAll('section').forEach(function(sec) { observer.observe(sec); });
     }
 
     /* --- Commands --- */
@@ -715,10 +713,17 @@
             ws.send(JSON.stringify({ command: cmd }));
             if (btnId) {
                 var b = document.getElementById(btnId);
-                b.className = (b.className.indexOf('active') !== -1) ? 'icon-btn' : 'icon-btn active';
+                b.className = (b.className.indexOf('active') !== -1) ? 'side-btn cmd' : 'side-btn cmd active';
             }
         }
     }
+
+    /* --- Price slider --- */
+    document.getElementById('price-rng').oninput = function() {
+        var v = parseFloat(this.value).toFixed(2);
+        document.getElementById('price-val').textContent = v;
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ costPerUnit: parseFloat(v) }));
+    };
 
     /* --- Fullscreen --- */
     function goFull() {
